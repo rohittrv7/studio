@@ -1,0 +1,857 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/network/connectivity_provider.dart';
+import '../../../../core/widgets/offline_banner.dart';
+import '../../../../features/analytics/data/datasources/analytics_remote_data_source.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../qr_scanner/presentation/widgets/qr_display_dialog.dart';
+import '../../domain/entities/gallery.dart';
+import '../providers/gallery_provider.dart';
+import '../widgets/folder_tile.dart';
+import '../../../../core/utils/security_util.dart';
+import '../../../media/presentation/widgets/media_grid.dart';
+
+/// Gallery detail screen — dark theme with folder tree.
+class GalleryDetailScreen extends ConsumerStatefulWidget {
+  const GalleryDetailScreen({super.key, required this.id});
+
+  final String id;
+
+  @override
+  ConsumerState<GalleryDetailScreen> createState() =>
+      _GalleryDetailScreenState();
+}
+
+class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Secure by default when entering the gallery detail screen
+    SecurityUtil.setSecure(true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authState = ref.read(authNotifierProvider);
+      if (authState is AuthAuthenticated && authState.user.isCustomer) {
+        ref.read(analyticsRemoteDataSourceProvider).recordView(widget.id);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // Clear secure flag when leaving the screen
+    SecurityUtil.setSecure(false);
+    super.dispose();
+  }
+
+  Future<void> _showCreateFolderDialog() async {
+    final controller = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF161616),
+          title: const Text('Create Folder', style: TextStyle(color: Colors.white)),
+          content: TextField(
+            controller: controller,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              hintText: 'Folder Name',
+              hintStyle: TextStyle(color: Colors.grey),
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () async {
+                final name = controller.text.trim();
+                if (name.isEmpty) return;
+                Navigator.pop(context);
+                try {
+                  await ref.read(galleryRepositoryProvider).createFolder(
+                    widget.id,
+                    name: name,
+                  );
+                  ref.invalidate(folderTreeProvider(widget.id));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Folder created successfully!')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to create folder: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Create', style: TextStyle(color: Color(0xFFE8B86D))),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _uploadMedia() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'mp4', 'mov', 'avi'],
+        allowMultiple: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final totalFiles = result.files.length;
+        final validFiles = result.files.where((f) => f.path != null).toList();
+        if (validFiles.isEmpty) return;
+
+        int completedCount = 0;
+        double currentFileProgress = 0.0;
+        String statusText = 'Starting upload...';
+        void Function(void Function())? dialogStateSetter;
+
+        if (!mounted) return;
+
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogCtx) {
+            return StatefulBuilder(
+              builder: (statefulCtx, setDialogState) {
+                dialogStateSetter = setDialogState;
+                final double overallProgress = totalFiles > 0
+                    ? (completedCount + currentFileProgress) / totalFiles
+                    : 0.0;
+                return AlertDialog(
+                  backgroundColor: const Color(0xFF161616),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.cloud_upload_outlined, color: Color(0xFFE8B86D), size: 40),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Uploading Media (${completedCount + 1}/$totalFiles)',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 16),
+                      LinearProgressIndicator(
+                        value: overallProgress,
+                        backgroundColor: Colors.white12,
+                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE8B86D)),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        '${(overallProgress * 100).toInt()}% completed',
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        statusText,
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+
+        try {
+          for (int i = 0; i < validFiles.length; i++) {
+            final pickedFile = validFiles[i];
+            final path = pickedFile.path!;
+            final file = File(path);
+            final extension = path.split('.').last.toLowerCase();
+            final isVideo = ['mp4', 'mov', 'avi'].contains(extension);
+            final mediaType = isVideo ? 'video' : 'photo';
+            final fileName = pickedFile.name;
+
+            if (dialogStateSetter != null) {
+              dialogStateSetter!(() {
+                currentFileProgress = 0.0;
+                statusText = 'Uploading $fileName...';
+              });
+            }
+
+            await ref.read(galleryRepositoryProvider).uploadMedia(
+              widget.id,
+              file: file,
+              mediaType: mediaType,
+              onProgress: (progress) {
+                if (dialogStateSetter != null) {
+                  dialogStateSetter!(() {
+                    currentFileProgress = progress;
+                    if (progress >= 0.99) {
+                      statusText = 'Processing $fileName on server...';
+                    } else {
+                      statusText = 'Uploading $fileName (${(progress * 100).toInt()}%)...';
+                    }
+                  });
+                }
+              },
+            );
+
+            completedCount++;
+            currentFileProgress = 0.0;
+          }
+        } finally {
+          if (mounted) {
+            Navigator.pop(context);
+          }
+        }
+
+        if (mounted) {
+          ref.invalidate(folderTreeProvider(widget.id));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Successfully uploaded $totalFiles files!')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to upload media: $e')),
+        );
+      }
+    }
+  }
+
+  void _showAssignCustomerDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => _AssignCustomerDialog(galleryId: widget.id),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen<ConnectivityState>(connectivityStatusProvider, (prev, next) {
+      if (next.justReconnected) {
+        ref.invalidate(galleryDetailProvider(widget.id));
+        ref.invalidate(folderTreeProvider(widget.id));
+        ref.read(connectivityStatusProvider.notifier).acknowledgeReconnect();
+      }
+    });
+
+    final galleryAsync = ref.watch(galleryDetailProvider(widget.id));
+    final folderTreeAsync = ref.watch(folderTreeProvider(widget.id));
+    final authState = ref.watch(authNotifierProvider);
+    final user = authState is AuthAuthenticated ? authState.user : null;
+    final isStudioOwner = user?.isStudioOwner ?? false;
+    const gold = Color(0xFFE8B86D);
+
+    final hasFullAccess = galleryAsync.maybeWhen(
+      data: (g) => isStudioOwner || (g.customerId == user?.id),
+      orElse: () => false,
+    );
+
+    // Apply or clear window flags dynamically based on access permissions
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (hasFullAccess) {
+        SecurityUtil.setSecure(false);
+      } else {
+        SecurityUtil.setSecure(true);
+      }
+    });
+
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        context.go('/galleries');
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Scaffold(
+          backgroundColor: const Color(0xFF0D0D0D),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // ── Custom top bar ────────────────────────────────────────────
+                galleryAsync.maybeWhen(
+                  data: (gallery) => _TopBar(
+                    title: gallery.name,
+                    onBack: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/galleries');
+                      }
+                    },
+                    customer: gallery.customer,
+                    isStudioOwner: isStudioOwner,
+                  ),
+                  orElse: () => _TopBar(
+                    title: 'Gallery',
+                    onBack: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/galleries');
+                      }
+                    },
+                    isStudioOwner: isStudioOwner,
+                  ),
+                ),
+
+                const OfflineBanner(),
+
+                // ── Body ──────────────────────────────────────────────────────
+                Expanded(
+                  child: galleryAsync.when(
+                    loading: () => const Center(
+                      child: CircularProgressIndicator(
+                          color: gold, strokeWidth: 2),
+                    ),
+                    error: (e, _) => Center(
+                      child: Text(
+                        'Error loading gallery: $e',
+                        style: const TextStyle(color: Color(0xFF888888)),
+                      ),
+                    ),
+                    data: (gallery) {
+                      return folderTreeAsync.when(
+                        loading: () => const Center(
+                          child: CircularProgressIndicator(
+                              color: gold, strokeWidth: 2),
+                        ),
+                        error: (e, _) => Center(
+                          child: Text(
+                            'Error loading folders: $e',
+                            style: const TextStyle(color: Color(0xFF888888)),
+                          ),
+                        ),
+                        data: (folders) {
+                          final folderSlivers = [
+                            SliverPadding(
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                              sliver: SliverToBoxAdapter(
+                                child: _FavoritesFolderTile(
+                                  onTap: () => context.push('/favorites'),
+                                ),
+                              ),
+                            ),
+                            if (folders.isNotEmpty)
+                              SliverPadding(
+                                padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                                sliver: SliverList(
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, i) {
+                                      final folder = folders[i];
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 6),
+                                        child: FolderTile(
+                                          folder: folder,
+                                          onTap: () => context.push(
+                                            '/galleries/${widget.id}/folders/${folder.id}',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    childCount: folders.length,
+                                  ),
+                                ),
+                              ),
+                          ];
+
+                          return MediaGrid(
+                            galleryId: widget.id,
+                            folderId: null,
+                            prependSlivers: folderSlivers,
+                            emptyPlaceholder: const _EmptyGallery(),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          floatingActionButton: isStudioOwner
+              ? FloatingActionButton(
+                  backgroundColor: gold,
+                  foregroundColor: Colors.black,
+                  onPressed: () {
+                    showModalBottomSheet<void>(
+                      context: context,
+                      backgroundColor: const Color(0xFF161616),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      builder: (context) {
+                        return SafeArea(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.create_new_folder_outlined, color: gold),
+                                title: const Text('Create Folder', style: TextStyle(color: Colors.white)),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _showCreateFolderDialog();
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.upload_file_outlined, color: gold),
+                                title: const Text('Upload Photo / Video', style: TextStyle(color: Colors.white)),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _uploadMedia();
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.person_add_alt_1_outlined, color: gold),
+                                title: const Text('Assign Customer', style: TextStyle(color: Colors.white)),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _showAssignCustomerDialog();
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.qr_code_rounded, color: gold),
+                                title: const Text('Get Gallery QR Code', style: TextStyle(color: Colors.white)),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  QrDisplayDialog.show(
+                                    context,
+                                    galleryId: widget.id,
+                                    title: 'Gallery QR Code',
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  child: const Icon(Icons.add_rounded),
+                )
+              : null,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Sub-widgets ────────────────────────────────────────────────────────────────
+
+class _TopBar extends StatelessWidget {
+  const _TopBar({
+    required this.title,
+    required this.onBack,
+    this.customer,
+    required this.isStudioOwner,
+  });
+
+  final String title;
+  final VoidCallback onBack;
+  final Customer? customer;
+  final bool isStudioOwner;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 8, 16, 4),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_rounded,
+                color: Color(0xFFAAAAAA), size: 22),
+            onPressed: onBack,
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Color(0xFFF2F2F2),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (isStudioOwner) ...[
+                  if (customer != null)
+                    Text(
+                      'Assigned to: ${customer!.name} (${customer!.phone})',
+                      style: const TextStyle(
+                        color: Color(0xFF999999),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  else
+                    const Text(
+                      'Not assigned to any customer',
+                      style: TextStyle(
+                        color: Color(0xFFE88A8A),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )
+                ]
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyGallery extends StatelessWidget {
+  const _EmptyGallery();
+
+  @override
+  Widget build(BuildContext context) {
+    const gold = Color(0xFFE8B86D);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: gold.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+                border: Border.all(color: gold.withValues(alpha: 0.15)),
+              ),
+              child: const Icon(Icons.photo_library_outlined,
+                  color: gold, size: 28),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'No items yet',
+              style: TextStyle(
+                color: Color(0xFFCCCCCC),
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'This gallery has no folders or media.',
+              style: TextStyle(color: Color(0xFF666666), fontSize: 13),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AssignCustomerDialog extends ConsumerStatefulWidget {
+  const _AssignCustomerDialog({required this.galleryId});
+  final String galleryId;
+
+  @override
+  ConsumerState<_AssignCustomerDialog> createState() => _AssignCustomerDialogState();
+}
+
+class _AssignCustomerDialogState extends ConsumerState<_AssignCustomerDialog> {
+  String _searchQuery = '';
+  bool _isCreatingNew = false;
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const gold = Color(0xFFE8B86D);
+    final customersAsync = ref.watch(customersListProvider);
+
+    return AlertDialog(
+      backgroundColor: const Color(0xFF161616),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text(
+        _isCreatingNew ? 'Create & Assign Customer' : 'Assign Customer',
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: _isLoading
+            ? const SizedBox(
+                height: 200,
+                child: Center(child: CircularProgressIndicator(color: gold)),
+              )
+            : _isCreatingNew
+                ? _buildCreateForm()
+                : _buildSelectionList(customersAsync),
+      ),
+      actions: [
+        if (!_isLoading) ...[
+          TextButton(
+            onPressed: () {
+              if (_isCreatingNew) {
+                setState(() => _isCreatingNew = false);
+              } else {
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          if (_isCreatingNew)
+            TextButton(
+              onPressed: _handleCreateAndAssign,
+              child: const Text('Create & Assign', style: TextStyle(color: gold, fontWeight: FontWeight.bold)),
+            )
+          else
+            TextButton(
+              onPressed: () => setState(() => _isCreatingNew = true),
+              child: const Text('New Customer', style: TextStyle(color: gold)),
+            ),
+        ]
+      ],
+    );
+  }
+
+  Widget _buildCreateForm() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextFormField(
+            controller: _nameController,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              labelText: 'Name',
+              labelStyle: TextStyle(color: Colors.grey),
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFE8B86D))),
+            ),
+            validator: (v) => v == null || v.trim().isEmpty ? 'Name is required' : null,
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _phoneController,
+            style: const TextStyle(color: Colors.white),
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+              labelText: 'Phone',
+              labelStyle: TextStyle(color: Colors.grey),
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFE8B86D))),
+            ),
+            validator: (v) => v == null || v.trim().isEmpty ? 'Phone is required' : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectionList(AsyncValue<List<Customer>> customersAsync) {
+    const gold = Color(0xFFE8B86D);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Search by name or phone...',
+            hintStyle: TextStyle(color: Colors.grey),
+            prefixIcon: Icon(Icons.search, color: Colors.grey),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: gold)),
+          ),
+          onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
+        ),
+        const SizedBox(height: 12),
+        Flexible(
+          child: customersAsync.when(
+            loading: () => const SizedBox(
+              height: 150,
+              child: Center(child: CircularProgressIndicator(color: gold)),
+            ),
+            error: (err, _) => Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text('Error: $err', style: const TextStyle(color: Colors.red)),
+            ),
+            data: (list) {
+              final filtered = list.where((c) {
+                return c.name.toLowerCase().contains(_searchQuery) ||
+                    c.phone.toLowerCase().contains(_searchQuery);
+              }).toList();
+
+              if (filtered.isEmpty) {
+                return const SizedBox(
+                  height: 100,
+                  child: Center(
+                    child: Text('No customers found', style: TextStyle(color: Colors.grey)),
+                  ),
+                );
+              }
+
+              return SizedBox(
+                height: 250,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: filtered.length,
+                  itemBuilder: (context, idx) {
+                    final customer = filtered[idx];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(customer.name, style: const TextStyle(color: Colors.white)),
+                      subtitle: Text(customer.phone, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      trailing: const Icon(Icons.chevron_right, color: gold),
+                      onTap: () => _handleAssign(customer.id),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleAssign(String customerId) async {
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(galleryRepositoryProvider).assignGallery(
+        widget.galleryId,
+        customerId: customerId,
+      );
+      ref.invalidate(galleryDetailProvider(widget.galleryId));
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Customer assigned successfully!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to assign customer: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleCreateAndAssign() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() => _isLoading = true);
+    try {
+      final newCustomer = await ref.read(galleryRepositoryProvider).createCustomer(
+        name: _nameController.text.trim(),
+        phone: _phoneController.text.trim(),
+      );
+      // Invalidate customer list cache
+      ref.invalidate(customersListProvider);
+      
+      // Assign the newly created customer
+      await ref.read(galleryRepositoryProvider).assignGallery(
+        widget.galleryId,
+        customerId: newCustomer.id,
+      );
+      ref.invalidate(galleryDetailProvider(widget.galleryId));
+      
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Customer ${newCustomer.name} created and assigned successfully!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to create & assign customer: $e')),
+        );
+      }
+    }
+  }
+}
+
+class _FavoritesFolderTile extends StatelessWidget {
+  const _FavoritesFolderTile({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const red = Colors.redAccent;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF161616),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF282828)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: red.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.favorite_rounded,
+                color: red,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Text(
+                'Favorites',
+                style: TextStyle(
+                  color: Color(0xFFF2F2F2),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFF444444),
+              size: 18,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

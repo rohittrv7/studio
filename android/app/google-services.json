@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "231750266422",
+    "project_id": "educational-e9f28",
+    "storage_bucket": "educational-e9f28.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:231750266422:android:a82e93981c2a9ccf883297",
+        "android_client_info": {
+          "package_name": "com.studiogallery.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "231750266422-83au991vf52t9bbjmb5vg770harofmtc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAvKaY3v4RtwP_AGqfEVHqXX6XFkbJAfqg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "231750266422-83au991vf52t9bbjmb5vg770harofmtc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
