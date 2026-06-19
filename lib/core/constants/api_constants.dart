@@ -15,7 +15,7 @@ class ApiConstants {
   /// Example LAN:   `http://192.168.1.5:3000`
   static const String _overrideBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: '',
+    defaultValue: 'https://studio-backend-5slu.onrender.com',
   );
 
   /// Your computer's local IP address on the Wi-Fi network.
