@@ -40,7 +40,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final phone = _phoneController.text.trim();
+    String phone = _phoneController.text.trim();
+    if (RegExp(r'^\d{10}$').hasMatch(phone)) {
+      phone = '+91$phone';
+    }
     final success = await ref.read(authNotifierProvider.notifier).sendOtp(
           phone: phone,
           userType: _selectedUserType,
@@ -378,8 +381,8 @@ class _PhoneField extends StatelessWidget {
           validator: (value) {
             final v = value?.trim() ?? '';
             if (v.isEmpty) return 'Phone number is required.';
-            if (!RegExp(r'^\+[1-9]\d{6,14}$').hasMatch(v)) {
-              return 'Enter a valid number with country code (e.g. +919876543210)';
+            if (!RegExp(r'^(?:\+[1-9]\d{6,14}|\d{10})$').hasMatch(v)) {
+              return 'Enter a valid 10-digit number or with country code.';
             }
             return null;
           },

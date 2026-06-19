@@ -1,7 +1,9 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 /// Full-screen QR scanner that reads Studio Gallery QR codes.
 ///
@@ -17,6 +19,8 @@ class QrScannerScreen extends StatefulWidget {
 
 class _QrScannerScreenState extends State<QrScannerScreen> {
   late final MobileScannerController _controller;
+  bool _hasPermission = false;
+  bool _isCheckingPermission = true;
 
   /// Prevents multiple simultaneous detections from being processed.
   bool _isProcessing = false;
@@ -25,6 +29,28 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   void initState() {
     super.initState();
     _controller = MobileScannerController();
+    _checkPermission();
+  }
+
+  Future<void> _checkPermission() async {
+    final status = await Permission.camera.request();
+    if (status.isGranted) {
+      if (mounted) {
+        setState(() {
+          _hasPermission = true;
+          _isCheckingPermission = false;
+        });
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Camera permission is required to use the scanner.'),
+          ),
+        );
+        context.pop(); // Close scanner screen
+      }
+    }
   }
 
   @override
@@ -42,6 +68,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
     final raw = capture.barcodes.firstOrNull?.rawValue;
     if (raw == null || raw.isEmpty) return;
+
+    // Vibrate to signal scan success
+    HapticFeedback.vibrate();
 
     _isProcessing = true;
 
@@ -84,6 +113,22 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isCheckingPermission) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF0D0D0D),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFFE8B86D),
+            strokeWidth: 2,
+          ),
+        ),
+      );
+    }
+
+    if (!_hasPermission) {
+      return const SizedBox.shrink();
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Scan QR Code'),

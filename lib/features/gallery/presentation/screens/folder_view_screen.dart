@@ -340,10 +340,20 @@ class _FolderViewScreenState extends ConsumerState<FolderViewScreen> {
                   ),
                 // Media grid — paginated, with heart icons via MediaGrid._MediaCell.
                 Expanded(
-                  child: MediaGrid(
-                    key: ValueKey(_refreshKey),
-                    galleryId: widget.id,
-                    folderId: widget.folderId,
+                  child: RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(folderTreeProvider(widget.id));
+                      setState(() {
+                        _refreshKey++;
+                      });
+                    },
+                    color: gold,
+                    backgroundColor: const Color(0xFF1A1A1A),
+                    child: MediaGrid(
+                      key: ValueKey(_refreshKey),
+                      galleryId: widget.id,
+                      folderId: widget.folderId,
+                    ),
                   ),
                 ),
               ],

@@ -28,6 +28,8 @@ class GalleryDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
+  int _refreshCount = 0;
+
   @override
   void initState() {
     super.initState();
@@ -366,11 +368,23 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
                               ),
                           ];
 
-                          return MediaGrid(
-                            galleryId: widget.id,
-                            folderId: null,
-                            prependSlivers: folderSlivers,
-                            emptyPlaceholder: const _EmptyGallery(),
+                          return RefreshIndicator(
+                            onRefresh: () async {
+                              ref.invalidate(galleryDetailProvider(widget.id));
+                              ref.invalidate(folderTreeProvider(widget.id));
+                              setState(() {
+                                _refreshCount++;
+                              });
+                            },
+                            color: gold,
+                            backgroundColor: const Color(0xFF1A1A1A),
+                            child: MediaGrid(
+                              key: ValueKey('media_grid_${widget.id}_$_refreshCount'),
+                              galleryId: widget.id,
+                              folderId: null,
+                              prependSlivers: folderSlivers,
+                              emptyPlaceholder: const _EmptyGallery(),
+                            ),
                           );
                         },
                       );
@@ -667,7 +681,14 @@ class _AssignCustomerDialogState extends ConsumerState<_AssignCustomerDialog> {
               enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
               focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFE8B86D))),
             ),
-            validator: (v) => v == null || v.trim().isEmpty ? 'Phone is required' : null,
+            validator: (v) {
+              final val = v?.trim() ?? '';
+              if (val.isEmpty) return 'Phone is required';
+              if (!RegExp(r'^(?:\+[1-9]\d{6,14}|\d{10})$').hasMatch(val)) {
+                return 'Enter a valid 10-digit number or with country code';
+              }
+              return null;
+            },
           ),
         ],
       ),
@@ -768,9 +789,13 @@ class _AssignCustomerDialogState extends ConsumerState<_AssignCustomerDialog> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _isLoading = true);
     try {
+      String phone = _phoneController.text.trim();
+      if (RegExp(r'^\d{10}$').hasMatch(phone)) {
+        phone = '+91$phone';
+      }
       final newCustomer = await ref.read(galleryRepositoryProvider).createCustomer(
         name: _nameController.text.trim(),
-        phone: _phoneController.text.trim(),
+        phone: phone,
       );
       // Invalidate customer list cache
       ref.invalidate(customersListProvider);
