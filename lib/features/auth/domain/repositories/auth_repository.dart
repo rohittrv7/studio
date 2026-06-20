@@ -52,6 +52,9 @@ abstract class AuthRepository {
     String? name,
     String? email,
     String? profilePhoto,
+    String? studioName,
+    String? location,
+    String? description,
   });
 }
 

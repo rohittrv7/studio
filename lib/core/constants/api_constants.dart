@@ -73,4 +73,13 @@ class ApiConstants {
   // ── Favorites endpoints ────────────────────────────────────────────────────
   static const String favorites = '/favorites';
   static String favoriteDelete(String mediaFileId) => '/favorites/$mediaFileId';
+
+  // ── Studios & Booking endpoints ───────────────────────────────────────────
+  static const String studios = '/studios';
+  static String studio(String id) => '/studios/$id';
+  static const String plans = '/plans';
+  static String plan(String id) => '/plans/$id';
+  static const String bookings = '/bookings';
+  static const String myBookings = '/bookings/my-bookings';
+  static String bookingStatus(String id) => '/bookings/$id/status';
 }

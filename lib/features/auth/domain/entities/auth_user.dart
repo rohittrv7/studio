@@ -7,6 +7,9 @@ class AuthUser {
     this.profilePhoto,
     required this.role,
     required this.galleryIds,
+    this.studioName,
+    this.location,
+    this.description,
   });
 
   /// Unique identifier from the backend.
@@ -27,12 +30,16 @@ class AuthUser {
   /// List of gallery IDs accessible to this user (relevant for customers).
   final List<String> galleryIds;
 
+  final String? studioName;
+  final String? location;
+  final String? description;
+
   bool get isStudioOwner => role == 'studio_owner';
   bool get isCustomer => role == 'customer';
 
   @override
   String toString() =>
-      'AuthUser(id: $id, name: $name, email: $email, profilePhoto: $profilePhoto, role: $role, galleryIds: $galleryIds)';
+      'AuthUser(id: $id, name: $name, email: $email, profilePhoto: $profilePhoto, role: $role, galleryIds: $galleryIds, studioName: $studioName, location: $location, description: $description)';
 
   @override
   bool operator ==(Object other) =>
@@ -43,8 +50,11 @@ class AuthUser {
           name == other.name &&
           email == other.email &&
           profilePhoto == other.profilePhoto &&
-          role == other.role;
+          role == other.role &&
+          studioName == other.studioName &&
+          location == other.location &&
+          description == other.description;
 
   @override
-  int get hashCode => Object.hash(id, name, email, profilePhoto, role);
+  int get hashCode => Object.hash(id, name, email, profilePhoto, role, studioName, location, description);
 }

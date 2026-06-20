@@ -209,15 +209,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Always transitions to [AuthUnauthenticated] (tokens are cleared locally
   /// regardless of server response).
   Future<void> logout({required String refreshToken}) async {
-    state = const AuthLoading();
-    try {
-      await _logout(refreshToken: refreshToken);
-    } on AuthException catch (_) {
-      // Tokens are already cleared inside the repository.
-    } catch (_) {
-      // Ignore — still transition to unauthenticated.
-    }
     state = const AuthUnauthenticated();
+    // Execute the logout in the background (fire-and-forget) so the UI redirects instantly.
+    // The repository's logout method will clear the tokens synchronously on start.
+    _logout(refreshToken: refreshToken).catchError((_) {});
   }
 
   /// Helper that automatically retrieves the current refresh token and triggers a logout.
@@ -231,6 +226,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     String? name,
     String? email,
     String? profilePhoto,
+    String? studioName,
+    String? location,
+    String? description,
   }) async {
     final currentState = state;
     if (currentState is! AuthAuthenticated) return false;
@@ -240,6 +238,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         name: name,
         email: email,
         profilePhoto: profilePhoto,
+        studioName: studioName,
+        location: location,
+        description: description,
       );
       state = AuthAuthenticated(
         updatedUser,

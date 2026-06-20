@@ -27,7 +27,7 @@ abstract class AuthRemoteDataSource {
   Future<AuthResponseModel> refreshToken({required String refreshToken});
 
   /// POST `/auth/logout`
-  Future<void> logout({required String refreshToken});
+  Future<void> logout({required String refreshToken, String? accessToken});
 
   /// POST `/auth/register-fcm-token`
   Future<void> registerFcmToken({
@@ -43,6 +43,9 @@ abstract class AuthRemoteDataSource {
     String? name,
     String? email,
     String? profilePhoto,
+    String? studioName,
+    String? location,
+    String? description,
   });
 }
 
@@ -100,10 +103,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> logout({required String refreshToken}) async {
+  Future<void> logout({required String refreshToken, String? accessToken}) async {
     await _dio.post<void>(
       ApiConstants.logout,
       data: {'refreshToken': refreshToken},
+      options: accessToken != null && accessToken.isNotEmpty
+          ? Options(headers: {'Authorization': 'Bearer $accessToken'})
+          : null,
     );
   }
 
@@ -129,6 +135,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String? name,
     String? email,
     String? profilePhoto,
+    String? studioName,
+    String? location,
+    String? description,
   }) async {
     final response = await _dio.patch<Map<String, dynamic>>(
       '/auth/profile',
@@ -136,6 +145,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         if (name != null) 'name': name,
         if (email != null) 'email': email,
         if (profilePhoto != null) 'profilePhoto': profilePhoto,
+        if (studioName != null) 'studioName': studioName,
+        if (location != null) 'location': location,
+        if (description != null) 'description': description,
       },
     );
     return UserModel.fromJson(response.data!);

@@ -36,6 +36,9 @@ class UserModel {
     this.profilePhoto,
     required this.role,
     required this.galleryIds,
+    this.studioName,
+    this.location,
+    this.description,
   });
 
   final String id;
@@ -46,6 +49,10 @@ class UserModel {
   /// `'studio_owner'` or `'customer'`
   final String role;
   final List<String> galleryIds;
+
+  final String? studioName;
+  final String? location;
+  final String? description;
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     final rawIds = json['galleryIds'];
@@ -60,6 +67,9 @@ class UserModel {
       profilePhoto: json['profilePhoto'] as String?,
       role: (json['role'] as String?) ?? '',
       galleryIds: galleryIds,
+      studioName: json['studioName'] as String?,
+      location: json['location'] as String?,
+      description: json['description'] as String?,
     );
   }
 
@@ -71,5 +81,8 @@ class UserModel {
         profilePhoto: profilePhoto,
         role: role,
         galleryIds: galleryIds,
+        studioName: studioName,
+        location: location,
+        description: description,
       );
 }

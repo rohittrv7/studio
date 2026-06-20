@@ -21,6 +21,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _studioNameController = TextEditingController();
+  final _locationController = TextEditingController();
+  final _descriptionController = TextEditingController();
   File? _imageFile;
   String? _imageBase64;
   late final AnimationController _fadeCtrl;
@@ -40,6 +43,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _studioNameController.dispose();
+    _locationController.dispose();
+    _descriptionController.dispose();
     _fadeCtrl.dispose();
     super.dispose();
   }
@@ -75,13 +81,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final authState = ref.read(authNotifierProvider);
+    final user = authState is AuthAuthenticated ? authState.user : null;
+    final isStudio = user?.isStudioOwner ?? false;
+
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
+    final studioName = isStudio ? _studioNameController.text.trim() : null;
+    final location = _locationController.text.trim();
+    final description = isStudio ? _descriptionController.text.trim() : null;
 
     final success = await ref.read(authNotifierProvider.notifier).updateProfile(
           name: name,
           email: email.isNotEmpty ? email : null,
           profilePhoto: _imageBase64,
+          studioName: studioName,
+          location: location.isNotEmpty ? location : null,
+          description: (description != null && description.isNotEmpty) ? description : null,
         );
 
     if (success && mounted) {
@@ -103,6 +119,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
 
     final authState = ref.watch(authNotifierProvider);
     final isLoading = authState is AuthLoading;
+    final user = authState is AuthAuthenticated ? authState.user : null;
+    final isStudio = user?.isStudioOwner ?? false;
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -240,6 +258,104 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                             ],
                           ),
                           const SizedBox(height: 24),
+
+                          // ── Studio Owner Specific Fields ───────────────────
+                          if (isStudio) ...[
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Studio Name',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: const Color(0xFF999999),
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13,
+                                      ),
+                                ),
+                                const SizedBox(height: 8),
+                                TextFormField(
+                                  controller: _studioNameController,
+                                  enabled: !isLoading,
+                                  style: const TextStyle(color: Color(0xFFF2F2F2), fontSize: 16),
+                                  decoration: const InputDecoration(
+                                    hintText: 'Enter studio name',
+                                    prefixIcon: Icon(Icons.camera_alt_outlined, size: 20),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Studio Name is required';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+
+                          // ── Location Field ─────────────────────────────────
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Location / City',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: const Color(0xFF999999),
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 13,
+                                    ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _locationController,
+                                enabled: !isLoading,
+                                style: const TextStyle(color: Color(0xFFF2F2F2), fontSize: 16),
+                                decoration: const InputDecoration(
+                                  hintText: 'e.g. Mumbai, Delhi, Bangalore',
+                                  prefixIcon: Icon(Icons.location_on_outlined, size: 20),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Location is required';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+
+                          // ── Studio Owner Description Field ─────────────────
+                          if (isStudio) ...[
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Studio Description (Optional)',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: const Color(0xFF999999),
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13,
+                                      ),
+                                ),
+                                const SizedBox(height: 8),
+                                TextFormField(
+                                  controller: _descriptionController,
+                                  enabled: !isLoading,
+                                  maxLines: 3,
+                                  style: const TextStyle(color: Color(0xFFF2F2F2), fontSize: 16),
+                                  decoration: const InputDecoration(
+                                    hintText: 'Describe your studio, specialities, etc...',
+                                    prefixIcon: Padding(
+                                      padding: EdgeInsets.only(bottom: 40),
+                                      child: Icon(Icons.info_outline_rounded, size: 20),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                          ],
 
                           // ── Email Field ────────────────────────────────────
                           Column(

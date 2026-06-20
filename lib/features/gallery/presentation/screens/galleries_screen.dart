@@ -16,6 +16,9 @@ import '../providers/gallery_provider.dart';
 import '../widgets/gallery_card.dart';
 import '../widgets/home_view.dart';
 import '../widgets/profile_view.dart';
+import '../../../studios/presentation/screens/studios_tab.dart';
+import '../../../bookings/presentation/screens/bookings_screen.dart';
+import '../../../bookings/data/repositories/bookings_repository.dart';
 
 /// Gallery list screen — the main landing screen after login.
 class GalleriesScreen extends ConsumerStatefulWidget {
@@ -30,6 +33,35 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
   bool _isGrid = true;
   int _currentIndex = 0; // 0: Home, 1: Galleries, 2: Profile
 
+  Widget _buildErrorWidget(Object error) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }
+    });
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline_rounded,
+              color: Color(0xFF666666), size: 40),
+          const SizedBox(height: 12),
+          const Text(
+            'Failed to load galleries.',
+            style: TextStyle(color: Color(0xFF888888)),
+          ),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: () => ref.read(galleryListProvider.notifier).refresh(),
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen<ConnectivityState>(connectivityStatusProvider, (prev, next) {
@@ -42,69 +74,122 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
     final asyncState = ref.watch(galleryListProvider);
     final authState = ref.watch(authNotifierProvider);
     final user = authState is AuthAuthenticated ? authState.user : null;
+    final isStudio = user?.isStudioOwner ?? false;
     const gold = Color(0xFFE8B86D);
 
-    Widget activeBody;
-    late final String title;
-    bool showGridListToggle = false;
+    final List<Widget> tabs = [];
+    final List<BottomNavigationBarItem> navItems = [];
+    final List<String> titles = [];
 
-    if (_currentIndex == 0) {
-      activeBody = HomeView(
-        onCreateGallery: () => _showCreateGalleryDialog(),
-        onCreateFolder: () => _showCreateFolderFromOutsideDialog(),
-        onUploadMedia: () => _showUploadMediaFromOutsideDialog(),
-        onShowGalleries: () => setState(() => _currentIndex = 1),
-      );
-      title = 'Studio Gallery';
-    } else if (_currentIndex == 2) {
-      activeBody = user != null
+    // 1. Home Tab (Both Roles)
+    tabs.add(HomeView(
+      onCreateGallery: () => _showCreateGalleryDialog(),
+      onCreateFolder: () => _showCreateFolderFromOutsideDialog(),
+      onUploadMedia: () => _showUploadMediaFromOutsideDialog(),
+      onShowGalleries: () {
+        setState(() => _currentIndex = isStudio ? 1 : 3);
+      },
+    ));
+    navItems.add(const BottomNavigationBarItem(
+      icon: Icon(Icons.home_outlined),
+      activeIcon: Icon(Icons.home_rounded),
+      label: 'Home',
+    ));
+    titles.add('Studio Gallery');
+
+    if (isStudio) {
+      // Studio Owner View List
+      // Index 1: Galleries list
+      tabs.add(asyncState.when(
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: gold, strokeWidth: 2),
+        ),
+        error: (error, _) => _buildErrorWidget(error),
+        data: (state) => _buildBody(state),
+      ));
+      navItems.add(const BottomNavigationBarItem(
+        icon: Icon(Icons.photo_library_outlined),
+        activeIcon: Icon(Icons.photo_library_rounded),
+        label: 'Gallery',
+      ));
+      titles.add('My Galleries');
+
+      // Index 2: Bookings received
+      tabs.add(const BookingsScreen());
+      navItems.add(const BottomNavigationBarItem(
+        icon: Icon(Icons.event_note_outlined),
+        activeIcon: Icon(Icons.event_note_rounded),
+        label: 'Bookings',
+      ));
+      titles.add('Booking Requests');
+
+      // Index 3: Profile
+      tabs.add(ProfileView(
+        onEditProfile: () => _showEditProfileDialog(context, user!),
+      ));
+      navItems.add(const BottomNavigationBarItem(
+        icon: Icon(Icons.person_outline),
+        activeIcon: Icon(Icons.person_rounded),
+        label: 'Profile',
+      ));
+      titles.add('My Profile');
+    } else {
+      // Customer View List
+      // Index 1: Explore Studios tab
+      tabs.add(const StudiosTab());
+      navItems.add(const BottomNavigationBarItem(
+        icon: Icon(Icons.storefront_outlined),
+        activeIcon: Icon(Icons.storefront_rounded),
+        label: 'Studios',
+      ));
+      titles.add('Explore Studios');
+
+      // Index 2: Bookings placed
+      tabs.add(const BookingsScreen());
+      navItems.add(const BottomNavigationBarItem(
+        icon: Icon(Icons.event_note_outlined),
+        activeIcon: Icon(Icons.event_note_rounded),
+        label: 'Bookings',
+      ));
+      titles.add('My Bookings');
+
+      // Index 3: Galleries assigned to them
+      tabs.add(asyncState.when(
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: gold, strokeWidth: 2),
+        ),
+        error: (error, _) => _buildErrorWidget(error),
+        data: (state) => _buildBody(state),
+      ));
+      navItems.add(const BottomNavigationBarItem(
+        icon: Icon(Icons.photo_library_outlined),
+        activeIcon: Icon(Icons.photo_library_rounded),
+        label: 'Gallery',
+      ));
+      titles.add('My Galleries');
+
+      // Index 4: Profile
+      tabs.add(user != null
           ? ProfileView(
               onEditProfile: () => _showEditProfileDialog(context, user),
             )
-          : const Center(child: Text('Not logged in'));
-      title = 'My Profile';
-    } else {
-      activeBody = asyncState.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(
-            color: gold,
-            strokeWidth: 2,
-          ),
-        ),
-        error: (error, _) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(error.toString())),
-              );
-            }
-          });
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline_rounded,
-                    color: Color(0xFF666666), size: 40),
-                const SizedBox(height: 12),
-                const Text(
-                  'Failed to load galleries.',
-                  style: TextStyle(color: Color(0xFF888888)),
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () =>
-                      ref.read(galleryListProvider.notifier).refresh(),
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          );
-        },
-        data: (state) => _buildBody(state),
-      );
-      title = 'My Galleries';
-      showGridListToggle = true;
+          : const Center(child: Text('Not logged in')));
+      navItems.add(const BottomNavigationBarItem(
+        icon: Icon(Icons.person_outline),
+        activeIcon: Icon(Icons.person_rounded),
+        label: 'Profile',
+      ));
+      titles.add('My Profile');
     }
+
+    if (_currentIndex >= tabs.length) {
+      _currentIndex = 0;
+    }
+
+    final activeBody = tabs[_currentIndex];
+    final title = titles[_currentIndex];
+    final showGridListToggle = (isStudio && _currentIndex == 1) || (!isStudio && _currentIndex == 3);
+    final showRefreshButton = (_currentIndex == 2);
 
     return BackButtonListener(
       onBackButtonPressed: () async {
@@ -119,160 +204,151 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
         child: Scaffold(
-        backgroundColor: const Color(0xFF0D0D0D),
-        body: SafeArea(
-          child: Column(
-            children: [
-              // ── Custom AppBar ───────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 16, 8),
-                child: Row(
-                  children: [
-                    // Brand icon
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: gold.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: gold.withValues(alpha: 0.25),
+          backgroundColor: const Color(0xFF0D0D0D),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // ── Custom AppBar ───────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 16, 8),
+                  child: Row(
+                    children: [
+                      // Brand icon
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: gold.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: gold.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: const Icon(Icons.camera_alt_rounded, color: gold, size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            color: Color(0xFFF2F2F2),
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.3,
+                          ),
                         ),
                       ),
-                      child:
-                          const Icon(Icons.camera_alt_rounded, color: gold, size: 18),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(
-                          color: Color(0xFFF2F2F2),
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.3,
+                      // Toggle grid/list
+                      if (showGridListToggle)
+                        IconButton(
+                          icon: Icon(
+                            _isGrid ? Icons.view_list_rounded : Icons.grid_view_rounded,
+                            color: const Color(0xFF888888),
+                            size: 22,
+                          ),
+                          tooltip: _isGrid ? 'List view' : 'Grid view',
+                          onPressed: () => setState(() => _isGrid = !_isGrid),
                         ),
-                      ),
-                    ),
-                    // Toggle grid/list
-                    if (showGridListToggle)
+                      // Refresh button (Bookings)
+                      if (showRefreshButton)
+                        IconButton(
+                          icon: const Icon(Icons.refresh_rounded, color: Color(0xFF888888), size: 22),
+                          tooltip: 'Refresh bookings',
+                          onPressed: () => ref.read(bookingsListProvider.notifier).loadBookings(),
+                        ),
+                      // QR scanner
                       IconButton(
-                        icon: Icon(
-                          _isGrid ? Icons.view_list_rounded : Icons.grid_view_rounded,
-                          color: const Color(0xFF888888),
+                        icon: const Icon(
+                          Icons.qr_code_scanner_rounded,
+                          color: Color(0xFF888888),
                           size: 22,
                         ),
-                        tooltip: _isGrid ? 'List view' : 'Grid view',
-                        onPressed: () => setState(() => _isGrid = !_isGrid),
+                        tooltip: 'Scan QR code',
+                        onPressed: () => context.push('/qr'),
                       ),
-                    // QR scanner
-                    IconButton(
-                      icon: const Icon(
-                        Icons.qr_code_scanner_rounded,
-                        color: Color(0xFF888888),
-                        size: 22,
-                      ),
-                      tooltip: 'Scan QR code',
-                      onPressed: () => context.push('/qr'),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
 
-              // ── Offline banner ──────────────────────────────────────────────
-              const OfflineBanner(),
+                // ── Offline banner ──────────────────────────────────────────────
+                const OfflineBanner(),
 
-              // ── Body ────────────────────────────────────────────────────────
-              Expanded(
-                child: activeBody,
-              ),
-            ],
+                // ── Body ────────────────────────────────────────────────────────
+                Expanded(
+                  child: activeBody,
+                ),
+              ],
+            ),
+          ),
+          floatingActionButton: user != null && user.isStudioOwner && (isStudio && _currentIndex == 1)
+              ? FloatingActionButton(
+                  backgroundColor: gold,
+                  foregroundColor: Colors.black,
+                  onPressed: () {
+                    showModalBottomSheet<void>(
+                      context: context,
+                      backgroundColor: const Color(0xFF161616),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      builder: (context) {
+                        return SafeArea(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.collections_outlined, color: gold),
+                                title: const Text('Create Gallery', style: TextStyle(color: Colors.white)),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _showCreateGalleryDialog();
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.create_new_folder_outlined, color: gold),
+                                title: const Text('Create Folder in Gallery', style: TextStyle(color: Colors.white)),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _showCreateFolderFromOutsideDialog();
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.upload_file_outlined, color: gold),
+                                title: const Text('Upload to Gallery', style: TextStyle(color: Colors.white)),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _showUploadMediaFromOutsideDialog();
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  child: const Icon(Icons.add_rounded),
+                )
+              : null,
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            backgroundColor: const Color(0xFF161616),
+            selectedItemColor: gold,
+            unselectedItemColor: const Color(0xFF888888),
+            showSelectedLabels: true,
+            showUnselectedLabels: true,
+            type: BottomNavigationBarType.fixed,
+            onTap: (index) {
+              if (_currentIndex != index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+              }
+            },
+            items: navItems,
           ),
         ),
-        floatingActionButton: user != null && user.isStudioOwner && _currentIndex == 1
-            ? FloatingActionButton(
-                backgroundColor: gold,
-                foregroundColor: Colors.black,
-                onPressed: () {
-                  showModalBottomSheet<void>(
-                    context: context,
-                    backgroundColor: const Color(0xFF161616),
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                    ),
-                    builder: (context) {
-                      return SafeArea(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.collections_outlined, color: gold),
-                              title: const Text('Create Gallery', style: TextStyle(color: Colors.white)),
-                              onTap: () {
-                                Navigator.pop(context);
-                                _showCreateGalleryDialog();
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.create_new_folder_outlined, color: gold),
-                              title: const Text('Create Folder in Gallery', style: TextStyle(color: Colors.white)),
-                              onTap: () {
-                                Navigator.pop(context);
-                                _showCreateFolderFromOutsideDialog();
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.upload_file_outlined, color: gold),
-                              title: const Text('Upload to Gallery', style: TextStyle(color: Colors.white)),
-                              onTap: () {
-                                Navigator.pop(context);
-                                _showUploadMediaFromOutsideDialog();
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
-                child: const Icon(Icons.add_rounded),
-              )
-            : null,
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          backgroundColor: const Color(0xFF161616),
-          selectedItemColor: gold,
-          unselectedItemColor: const Color(0xFF888888),
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
-          type: BottomNavigationBarType.fixed,
-          onTap: (index) {
-            if (_currentIndex != index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            }
-          },
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home_rounded),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.photo_library_outlined),
-              activeIcon: Icon(Icons.photo_library_rounded),
-              label: 'Gallery',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person_rounded),
-              label: 'Profile',
-            ),
-          ],
-        ),
       ),
-    ),);
+    );
   }
 
   Future<void> _showCreateFolderFromOutsideDialog() async {

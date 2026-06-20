@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../../auth/domain/entities/auth_user.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../plans/presentation/screens/plans_manager_screen.dart';
 
 class ProfileView extends ConsumerWidget {
   const ProfileView({
@@ -17,21 +17,15 @@ class ProfileView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authNotifierProvider);
     if (authState is! AuthAuthenticated) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF0D0D0D),
-        body: Center(
-          child: Text('Not logged in', style: TextStyle(color: Colors.white)),
-        ),
+      return const Center(
+        child: Text('Not logged in', style: TextStyle(color: Colors.white)),
       );
     }
 
     final user = authState.user;
     const gold = Color(0xFFE8B86D);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
-      body: SafeArea(
-        child: SingleChildScrollView(
+    return SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           child: Column(
             children: [
@@ -88,6 +82,22 @@ class ProfileView extends ConsumerWidget {
                 subtitle: 'Update your display name and email',
                 onTap: onEditProfile,
               ),
+              if (user.isStudioOwner) ...[
+                const SizedBox(height: 12),
+                _buildListTile(
+                  icon: Icons.payments_outlined,
+                  title: 'My Pricing Plans',
+                  subtitle: 'Manage shoot package rates & details',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const PlansManagerScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
               const SizedBox(height: 12),
               _buildListTile(
                 icon: Icons.security_rounded,
@@ -166,9 +176,7 @@ class ProfileView extends ConsumerWidget {
               const SizedBox(height: 24),
             ],
           ),
-        ),
-      ),
-    );
+        );
   }
 
   Widget _buildListTile({

@@ -8,6 +8,7 @@
 // depend on them are overridden with lightweight fakes so the test stays fast
 // and hermetic.
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
@@ -94,6 +95,12 @@ void main() {
 
       // No exception should have been thrown.
       expect(tester.takeException(), isNull);
+
+      // Pump to let the 2.5s splash screen timer fire and complete.
+      await tester.pump(const Duration(seconds: 3));
+
+      // Dispose the app widget tree so that periodic timers are cancelled.
+      await tester.pumpWidget(const SizedBox());
     },
   );
 }

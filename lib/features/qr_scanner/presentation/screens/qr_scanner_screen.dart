@@ -18,7 +18,7 @@ class QrScannerScreen extends StatefulWidget {
 }
 
 class _QrScannerScreenState extends State<QrScannerScreen> {
-  late final MobileScannerController _controller;
+  MobileScannerController? _controller;
   bool _hasPermission = false;
   bool _isCheckingPermission = true;
 
@@ -28,7 +28,6 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = MobileScannerController();
     _checkPermission();
   }
 
@@ -37,6 +36,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     if (status.isGranted) {
       if (mounted) {
         setState(() {
+          _controller = MobileScannerController();
           _hasPermission = true;
           _isCheckingPermission = false;
         });
@@ -55,7 +55,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -94,7 +94,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Invalid QR code — not a Studio Gallery link'),
+          content: Text('This QR is not valid'),
         ),
       );
     }
@@ -125,7 +125,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       );
     }
 
-    if (!_hasPermission) {
+    if (!_hasPermission || _controller == null) {
       return const SizedBox.shrink();
     }
 
@@ -148,14 +148,14 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                 final path = result.files.single.path;
                 if (path == null) return;
                 
-                final capture = await _controller.analyzeImage(path);
+                final capture = await _controller!.analyzeImage(path);
                 if (capture != null && capture.barcodes.isNotEmpty) {
                   _onDetect(capture);
                 } else {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('No QR code found in the selected image'),
+                        content: Text('This QR is not valid'),
                       ),
                     );
                   }
@@ -163,8 +163,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Failed to read image: $e'),
+                    const SnackBar(
+                      content: Text('This QR is not valid'),
                     ),
                   );
                 }
@@ -175,13 +175,13 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
           IconButton(
             icon: const Icon(Icons.flashlight_on),
             tooltip: 'Toggle torch',
-            onPressed: () => _controller.toggleTorch(),
+            onPressed: () => _controller?.toggleTorch(),
           ),
           // Camera flip
           IconButton(
             icon: const Icon(Icons.flip_camera_ios),
             tooltip: 'Flip camera',
-            onPressed: () => _controller.switchCamera(),
+            onPressed: () => _controller?.switchCamera(),
           ),
         ],
       ),
@@ -189,7 +189,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         children: [
           // Camera viewfinder
           MobileScanner(
-            controller: _controller,
+            controller: _controller!,
             onDetect: _onDetect,
           ),
 
@@ -205,7 +205,12 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                 ),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const _ScanCorners(),
+              child: const Stack(
+                children: [
+                  _ScanCorners(),
+                  _LaserLine(width: 260),
+                ],
+              ),
             ),
           ),
 
@@ -330,4 +335,69 @@ class _CornerPainter extends CustomPainter {
   @override
   bool shouldRepaint(_CornerPainter oldDelegate) =>
       oldDelegate.color != color || oldDelegate.thickness != thickness;
+}
+
+// ---------------------------------------------------------------------------
+// Sliding laser scanner line animation
+// ---------------------------------------------------------------------------
+
+class _LaserLine extends StatefulWidget {
+  const _LaserLine({required this.width});
+  final double width;
+
+  @override
+  State<_LaserLine> createState() => _LaserLineState();
+}
+
+class _LaserLineState extends State<_LaserLine> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _anim = Tween<double>(begin: 10, end: 240).animate(CurvedAnimation(
+      parent: _ctrl,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (context, child) {
+        return Positioned(
+          top: _anim.value,
+          left: 10,
+          right: 10,
+          child: Container(
+            height: 3,
+            decoration: BoxDecoration(
+              color: primary,
+              borderRadius: BorderRadius.circular(1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: primary.withValues(alpha: 0.8),
+                  blurRadius: 8,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

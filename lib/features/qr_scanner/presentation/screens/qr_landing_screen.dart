@@ -81,16 +81,8 @@ class _QrLandingScreenState extends ConsumerState<QrLandingScreen> {
             return const Center(child: CircularProgressIndicator());
           },
           error: (error, _) {
-            final isInvalidLink = error is InvalidQrLinkFailure;
-            return _ErrorCard(
-              message: isInvalidLink
-                  ? 'Gallery link is no longer valid'
-                  : 'Unable to connect. Please check your connection.',
-              onRetry: isInvalidLink
-                  ? null
-                  : () => ref
-                      .read(qrValidationProvider.notifier)
-                      .validate(widget.token),
+            return const _ErrorCard(
+              message: 'This QR is not valid',
             );
           },
         ),

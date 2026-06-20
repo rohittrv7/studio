@@ -80,8 +80,10 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> logout({required String refreshToken}) async {
+    final accessToken = _storage.getAccessToken();
+    await _storage.clearTokens();
     try {
-      await _remote.logout(refreshToken: refreshToken);
+      await _remote.logout(refreshToken: refreshToken, accessToken: accessToken);
     } on DioException catch (e) {
       // Best-effort logout: if the server call fails, still clear local tokens.
       // Rethrow only unrecoverable network failures so the UI can show feedback.
@@ -90,8 +92,6 @@ class AuthRepositoryImpl implements AuthRepository {
         throw _mapDioException(e);
       }
       // Ignore 401/404 on logout — token may already be revoked.
-    } finally {
-      await _storage.clearTokens();
     }
   }
 
@@ -148,12 +148,18 @@ class AuthRepositoryImpl implements AuthRepository {
     String? name,
     String? email,
     String? profilePhoto,
+    String? studioName,
+    String? location,
+    String? description,
   }) async {
     try {
       final model = await _remote.updateProfile(
         name: name,
         email: email,
         profilePhoto: profilePhoto,
+        studioName: studioName,
+        location: location,
+        description: description,
       );
       await _storage.saveProfile(
         name: model.name,

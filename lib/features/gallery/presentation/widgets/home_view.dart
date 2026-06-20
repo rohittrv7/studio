@@ -28,10 +28,7 @@ class HomeView extends ConsumerWidget {
     final isStudioOwner = user?.isStudioOwner ?? false;
     const gold = Color(0xFFE8B86D);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
-      body: SafeArea(
-        child: RefreshIndicator(
+    return RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(galleryListProvider);
             await ref.read(galleryListProvider.notifier).refresh();
@@ -214,9 +211,7 @@ class HomeView extends ConsumerWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
+        );
   }
 
   Widget _buildStatCard(
