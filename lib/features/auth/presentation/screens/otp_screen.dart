@@ -249,7 +249,6 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
       resizeToAvoidBottomInset: true,
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
@@ -327,8 +326,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
                               const SizedBox(height: 6),
                               RichText(
                                 text: TextSpan(
-                                  style: const TextStyle(
-                                    color: Color(0xFF888888),
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     fontSize: 14,
                                     height: 1.4,
                                   ),
@@ -337,8 +336,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
                                         text: 'We sent a 6-digit code to\n'),
                                     TextSpan(
                                       text: widget.phone,
-                                      style: const TextStyle(
-                                        color: Color(0xFFCCCCCC),
+                                      style: TextStyle(
+                                        color: Theme.of(context).colorScheme.onSurface,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -363,10 +362,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
                                         ),
                                       ),
                                       const SizedBox(width: 10),
-                                      const Text(
+                                      Text(
                                         'Sending OTP…',
                                         style: TextStyle(
-                                            color: Color(0xFF888888),
+                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                                             fontSize: 14),
                                       ),
                                     ],

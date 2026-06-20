@@ -127,9 +127,15 @@ class _StudiosTabState extends ConsumerState<StudiosTab> {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 14),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF161616),
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF161616)
+                              : const Color(0xFFF7F7F7),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFF222222)),
+                          border: Border.all(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF2E2E2E)
+                                : const Color(0xFFE5E5E5),
+                          ),
                         ),
                         child: InkWell(
                           onTap: () {
@@ -156,8 +162,8 @@ class _StudiosTabState extends ConsumerState<StudiosTab> {
                                     children: [
                                       Text(
                                         studio.studioName ?? 'Unnamed Studio',
-                                        style: const TextStyle(
-                                          color: Colors.white,
+                                        style: TextStyle(
+                                          color: Theme.of(context).colorScheme.onSurface,
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -169,7 +175,10 @@ class _StudiosTabState extends ConsumerState<StudiosTab> {
                                           const SizedBox(width: 4),
                                           Text(
                                             studio.location ?? 'No location info',
-                                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                            style: TextStyle(
+                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                              fontSize: 12,
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -178,7 +187,10 @@ class _StudiosTabState extends ConsumerState<StudiosTab> {
                                         studio.description ?? 'No description provided.',
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(color: Colors.grey, fontSize: 11),
+                                        style: TextStyle(
+                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                          fontSize: 11,
+                                        ),
                                       ),
                                     ],
                                   ),

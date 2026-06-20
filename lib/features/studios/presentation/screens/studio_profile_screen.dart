@@ -15,7 +15,6 @@ class StudioProfileScreen extends ConsumerWidget {
     final studioDetailsAsync = ref.watch(studioDetailsProvider(studioId));
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
       appBar: AppBar(
         title: const Text('Studio Profile'),
         centerTitle: true,
@@ -60,8 +59,8 @@ class StudioProfileScreen extends ConsumerWidget {
                         children: [
                           Text(
                             studio.studioName ?? 'Unnamed Studio',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
                             ),
@@ -73,7 +72,10 @@ class StudioProfileScreen extends ConsumerWidget {
                               const SizedBox(width: 4),
                               Text(
                                 studio.location ?? 'No location',
-                                style: const TextStyle(color: Colors.grey, fontSize: 13),
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  fontSize: 13,
+                                ),
                               ),
                             ],
                           ),
@@ -84,7 +86,10 @@ class StudioProfileScreen extends ConsumerWidget {
                               const SizedBox(width: 4),
                               Text(
                                 studio.phone ?? 'No phone',
-                                style: const TextStyle(color: Colors.grey, fontSize: 13),
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  fontSize: 13,
+                                ),
                               ),
                             ],
                           ),
@@ -99,16 +104,20 @@ class StudioProfileScreen extends ConsumerWidget {
                 if (studio.description != null && studio.description!.isNotEmpty) ...[
                   Text(
                     studio.description!,
-                    style: const TextStyle(color: Color(0xFFBBBBBB), fontSize: 14, height: 1.4),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 14,
+                      height: 1.4,
+                    ),
                   ),
                   const SizedBox(height: 28),
                 ],
 
                 // ── Demo Gallery Section ─────────────────────────────────────
-                const Text(
+                Text(
                   'Demo Photos & Videos',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -119,9 +128,15 @@ class StudioProfileScreen extends ConsumerWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 36),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF161616),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF161616)
+                          : const Color(0xFFF7F7F7),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF222222)),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF2E2E2E)
+                            : const Color(0xFFE5E5E5),
+                      ),
                     ),
                     child: const Center(
                       child: Column(
@@ -160,7 +175,9 @@ class StudioProfileScreen extends ConsumerWidget {
                         },
                         child: Container(
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1E1E1E),
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF1E1E1E)
+                                : const Color(0xFFEEEEEE),
                             borderRadius: BorderRadius.circular(8),
                             image: DecorationImage(
                               image: NetworkImage(media.thumbnailUrl),
@@ -184,10 +201,10 @@ class StudioProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 32),
 
                 // ── Plans Section ────────────────────────────────────────────
-                const Text(
+                Text(
                   'Pricing & Booking Plans',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -198,9 +215,15 @@ class StudioProfileScreen extends ConsumerWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF161616),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF161616)
+                          : const Color(0xFFF7F7F7),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF222222)),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF2E2E2E)
+                            : const Color(0xFFE5E5E5),
+                      ),
                     ),
                     child: const Center(
                       child: Text(
@@ -220,9 +243,15 @@ class StudioProfileScreen extends ConsumerWidget {
                         margin: const EdgeInsets.only(bottom: 16),
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF161616),
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF161616)
+                              : const Color(0xFFF7F7F7),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFF222222)),
+                          border: Border.all(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF2E2E2E)
+                                : const Color(0xFFE5E5E5),
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,8 +262,8 @@ class StudioProfileScreen extends ConsumerWidget {
                                 Expanded(
                                   child: Text(
                                     plan.name,
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onSurface,
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -253,7 +282,11 @@ class StudioProfileScreen extends ConsumerWidget {
                             const SizedBox(height: 8),
                             Text(
                               plan.description,
-                              style: const TextStyle(color: Colors.grey, fontSize: 13, height: 1.4),
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                fontSize: 13,
+                                height: 1.4,
+                              ),
                             ),
                             const SizedBox(height: 16),
                             SizedBox(
@@ -328,11 +361,14 @@ class StudioProfileScreen extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF161616),
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF161616)
+          : const Color(0xFFF7F7F7),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setState) {
+            final isDark = Theme.of(ctx).brightness == Brightness.dark;
             return Padding(
               padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
               child: SingleChildScrollView(
@@ -343,9 +379,13 @@ class StudioProfileScreen extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Book Shoot Session',
-                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Theme.of(ctx).colorScheme.onSurface,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.grey),
@@ -353,16 +393,25 @@ class StudioProfileScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const Divider(color: Color(0xFF222222)),
+                    Divider(
+                      color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE5E5E5),
+                    ),
                     const SizedBox(height: 16),
 
                     // Shoot Date & Time
-                    const Text('Select Date & Time', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(
+                      'Select Date & Time',
+                      style: TextStyle(
+                        color: Theme.of(ctx).colorScheme.onSurface,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: dateController,
                       readOnly: true,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: Theme.of(ctx).colorScheme.onSurface),
                       decoration: const InputDecoration(
                         hintText: 'Choose Date',
                         prefixIcon: Icon(Icons.calendar_today_rounded, color: gold, size: 20),
@@ -376,12 +425,19 @@ class StudioProfileScreen extends ConsumerWidget {
                           lastDate: now.add(const Duration(days: 365)),
                           builder: (context, child) {
                             return Theme(
-                              data: ThemeData.dark().copyWith(
+                              data: isDark ? ThemeData.dark().copyWith(
                                 colorScheme: const ColorScheme.dark(
                                   primary: gold,
                                   onPrimary: Colors.black,
                                   surface: Color(0xFF161616),
                                   onSurface: Colors.white,
+                                ),
+                              ) : ThemeData.light().copyWith(
+                                colorScheme: const ColorScheme.light(
+                                  primary: gold,
+                                  onPrimary: Colors.white,
+                                  surface: Color(0xFFF7F7F7),
+                                  onSurface: Colors.black,
                                 ),
                               ),
                               child: child!,
@@ -389,16 +445,23 @@ class StudioProfileScreen extends ConsumerWidget {
                           },
                         );
                         if (picked != null) {
+                          if (!ctx.mounted) return;
                           final time = await showTimePicker(
                             context: ctx,
                             initialTime: TimeOfDay.now(),
                             builder: (context, child) {
                               return Theme(
-                                data: ThemeData.dark().copyWith(
+                                data: isDark ? ThemeData.dark().copyWith(
                                   colorScheme: const ColorScheme.dark(
                                     primary: gold,
                                     onPrimary: Colors.black,
                                     surface: Color(0xFF161616),
+                                  ),
+                                ) : ThemeData.light().copyWith(
+                                  colorScheme: const ColorScheme.light(
+                                    primary: gold,
+                                    onPrimary: Colors.white,
+                                    surface: Color(0xFFF7F7F7),
                                   ),
                                 ),
                                 child: child!,
@@ -406,6 +469,7 @@ class StudioProfileScreen extends ConsumerWidget {
                             },
                           );
                           if (time != null) {
+                            if (!ctx.mounted) return;
                             selectedDate = DateTime(picked.year, picked.month, picked.day, time.hour, time.minute);
                             dateController.text = '${picked.toLocal().toString().split(' ')[0]} ${time.format(ctx)}';
                           }
@@ -415,12 +479,19 @@ class StudioProfileScreen extends ConsumerWidget {
 
                     const SizedBox(height: 16),
 
-                    // Shoot Address
-                    const Text('Shoot Venue Address', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                    // Shoot Venue Address
+                    Text(
+                      'Shoot Venue Address',
+                      style: TextStyle(
+                        color: Theme.of(ctx).colorScheme.onSurface,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: addressController,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: Theme.of(ctx).colorScheme.onSurface),
                       maxLines: 2,
                       decoration: const InputDecoration(
                         hintText: 'Enter complete venue address...',
@@ -434,28 +505,54 @@ class StudioProfileScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E1E),
+                        color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFEEEEEE),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF2A2A2A)),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE5E5E5),
+                        ),
                       ),
                       child: Column(
                         children: [
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Total Plan Price', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                              Text('₹${plan.price.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              Text(
+                                'Total Plan Price',
+                                style: TextStyle(
+                                  color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              Text(
+                                '₹${plan.price.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  color: Theme.of(ctx).colorScheme.onSurface,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 8),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Advance Pay Needed (25%)', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                              Text('₹${(plan.price * 0.25).toStringAsFixed(0)}', style: const TextStyle(color: gold, fontWeight: FontWeight.bold)),
+                              Text(
+                                'Advance Pay Needed (25%)',
+                                style: TextStyle(
+                                  color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              Text(
+                                '₹${(plan.price * 0.25).toStringAsFixed(0)}',
+                                style: const TextStyle(color: gold, fontWeight: FontWeight.bold),
+                              ),
                             ],
                           ),
-                          const Divider(color: Color(0xFF333333), height: 20),
+                          Divider(
+                            color: isDark ? const Color(0xFF333333) : const Color(0xFFDDDDDD),
+                            height: 20,
+                          ),
                           const Text(
                             '⚠️ 25% Advance payment is required to confirm booking. Payment collection details will be sent after studio approval.',
                             style: TextStyle(color: gold, fontSize: 11, height: 1.4),
@@ -495,20 +592,32 @@ class StudioProfileScreen extends ConsumerWidget {
                             address,
                           );
 
-                          if (context.mounted) Navigator.pop(context); // Pop loader
+                          if (!context.mounted) return;
+                          Navigator.pop(context); // Pop loader
 
                           if (success) {
                             showDialog<void>(
                               context: context,
                               builder: (c) {
                                 return AlertDialog(
-                                  backgroundColor: const Color(0xFF161616),
-                                  title: const Text('Booking Placed!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                  content: const Text(
+                                  backgroundColor: Theme.of(context).brightness == Brightness.dark
+                                      ? const Color(0xFF161616)
+                                      : const Color(0xFFF7F7F7),
+                                  title: Text(
+                                    'Booking Placed!',
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  content: Text(
                                     'Your shoot session booking has been requested. '
                                     'The studio has been notified and will verify the details. '
                                     'Instructions for the 25% advance payment will be sent once confirmed.',
-                                    style: TextStyle(color: Colors.grey, height: 1.4),
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      height: 1.4,
+                                    ),
                                   ),
                                   actions: [
                                     TextButton(

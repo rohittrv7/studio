@@ -23,9 +23,15 @@ class FolderTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF161616),
+          color: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF161616)
+              : const Color(0xFFF7F7F7),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF282828)),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF2E2E2E)
+                : const Color(0xFFE5E5E5),
+          ),
         ),
         child: Row(
           children: [
@@ -52,8 +58,8 @@ class FolderTile extends StatelessWidget {
                 children: [
                   Text(
                     folder.name,
-                    style: const TextStyle(
-                      color: Color(0xFFF2F2F2),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
@@ -64,8 +70,8 @@ class FolderTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       '${folder.children.length} sub-folder${folder.children.length == 1 ? '' : 's'}',
-                      style: const TextStyle(
-                        color: Color(0xFF666666),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 11,
                       ),
                     ),
@@ -78,14 +84,20 @@ class FolderTile extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF242424),
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF242424)
+                      : const Color(0xFFEEEEEE),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF303030)),
+                  border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFF2E2E2E)
+                        : const Color(0xFFE5E5E5),
+                  ),
                 ),
                 child: Text(
                   '${folder.mediaCount}',
-                  style: const TextStyle(
-                    color: Color(0xFF888888),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                   ),

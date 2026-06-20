@@ -11,6 +11,7 @@ import '../../../media/presentation/widgets/media_grid.dart';
 import '../providers/gallery_provider.dart';
 import '../widgets/folder_tile.dart';
 import '../../../../core/utils/security_util.dart';
+import '../../../../core/widgets/error_display.dart';
 
 /// Folder view screen — shows contents of a specific folder inside a gallery.
 class FolderViewScreen extends ConsumerStatefulWidget {
@@ -49,18 +50,22 @@ class _FolderViewScreenState extends ConsumerState<FolderViewScreen> {
 
   Future<void> _showCreateSubfolderDialog() async {
     final controller = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog<void>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF161616),
-          title: const Text('Create Subfolder', style: TextStyle(color: Colors.white)),
+          backgroundColor: isDark ? const Color(0xFF161616) : const Color(0xFFF7F7F7),
+          title: Text(
+            'Create Subfolder',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+          ),
           content: TextField(
             controller: controller,
-            style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            decoration: InputDecoration(
               hintText: 'Subfolder Name',
-              hintStyle: TextStyle(color: Colors.grey),
+              hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             autofocus: true,
           ),
@@ -125,6 +130,7 @@ class _FolderViewScreenState extends ConsumerState<FolderViewScreen> {
           context: context,
           barrierDismissible: false,
           builder: (dialogCtx) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
             return StatefulBuilder(
               builder: (statefulCtx, setDialogState) {
                 dialogStateSetter = setDialogState;
@@ -132,7 +138,7 @@ class _FolderViewScreenState extends ConsumerState<FolderViewScreen> {
                     ? (completedCount + currentFileProgress) / totalFiles
                     : 0.0;
                 return AlertDialog(
-                  backgroundColor: const Color(0xFF161616),
+                  backgroundColor: isDark ? const Color(0xFF161616) : const Color(0xFFF7F7F7),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   content: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -141,23 +147,33 @@ class _FolderViewScreenState extends ConsumerState<FolderViewScreen> {
                       const SizedBox(height: 16),
                       Text(
                         'Uploading Media (${completedCount + 1}/$totalFiles)',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       LinearProgressIndicator(
                         value: overallProgress,
-                        backgroundColor: Colors.white12,
+                        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                         valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE8B86D)),
                       ),
                       const SizedBox(height: 12),
                       Text(
                         '${(overallProgress * 100).toInt()}% completed',
-                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 13,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         statusText,
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -278,7 +294,11 @@ class _FolderViewScreenState extends ConsumerState<FolderViewScreen> {
               },
             ),
           ),
-          body: Center(child: Text('Error loading folder: $error')),
+          body: ErrorDisplay(
+            title: 'Failed to load folder',
+            message: error.toString(),
+            onRetry: () => ref.invalidate(folderTreeProvider(widget.id)),
+          ),
         ),
         data: (folders) {
           final folder = _findFolder(folders, widget.folderId);
@@ -297,7 +317,10 @@ class _FolderViewScreenState extends ConsumerState<FolderViewScreen> {
                   },
                 ),
               ),
-              body: const Center(child: Text('Folder not found.')),
+              body: const ErrorDisplay(
+                title: 'Folder Not Found',
+                message: 'The requested folder could not be found in this gallery.',
+              ),
             );
           }
           return Scaffold(
@@ -314,49 +337,64 @@ class _FolderViewScreenState extends ConsumerState<FolderViewScreen> {
                 },
               ),
             ),
-            body: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Breadcrumb
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Text(
-                    'Gallery › ${folder.name}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
+            body: RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(folderTreeProvider(widget.id));
+                setState(() {
+                  _refreshKey++;
+                });
+              },
+              color: gold,
+              backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF1A1A1A)
+                  : const Color(0xFFF5F5F5),
+              child: Builder(
+                builder: (context) {
+                  final folderSlivers = [
+                    // Breadcrumb
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      sliver: SliverToBoxAdapter(
+                        child: Text(
+                          'Gallery › ${folder.name}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                         ),
-                  ),
-                ),
-                // Child folders
-                if (folder.children.isNotEmpty)
-                  ...folder.children.map(
-                    (child) => FolderTile(
-                      folder: child,
-                      onTap: () => context.push(
-                        '/galleries/${widget.id}/folders/${child.id}',
                       ),
                     ),
-                  ),
-                // Media grid — paginated, with heart icons via MediaGrid._MediaCell.
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: () async {
-                      ref.invalidate(folderTreeProvider(widget.id));
-                      setState(() {
-                        _refreshKey++;
-                      });
-                    },
-                    color: gold,
-                    backgroundColor: const Color(0xFF1A1A1A),
-                    child: MediaGrid(
-                      key: ValueKey(_refreshKey),
-                      galleryId: widget.id,
-                      folderId: widget.folderId,
-                    ),
-                  ),
-                ),
-              ],
+                    // Child folders
+                    if (folder.children.isNotEmpty)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, i) {
+                              final child = folder.children[i];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: FolderTile(
+                                  folder: child,
+                                  onTap: () => context.push(
+                                    '/galleries/${widget.id}/folders/${child.id}',
+                                  ),
+                                ),
+                              );
+                            },
+                            childCount: folder.children.length,
+                          ),
+                        ),
+                      ),
+                  ];
+
+                  return MediaGrid(
+                    key: ValueKey('${widget.folderId}_$_refreshKey'),
+                    galleryId: widget.id,
+                    folderId: widget.folderId,
+                    prependSlivers: folderSlivers,
+                  );
+                },
+              ),
             ),
             floatingActionButton: isStudioOwner
                 ? FloatingActionButton(
@@ -365,7 +403,9 @@ class _FolderViewScreenState extends ConsumerState<FolderViewScreen> {
                     onPressed: () {
                       showModalBottomSheet<void>(
                         context: context,
-                        backgroundColor: const Color(0xFF161616),
+                        backgroundColor: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF161616)
+                            : const Color(0xFFF7F7F7),
                         shape: const RoundedRectangleBorder(
                           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                         ),
@@ -376,7 +416,12 @@ class _FolderViewScreenState extends ConsumerState<FolderViewScreen> {
                               children: [
                                 ListTile(
                                   leading: const Icon(Icons.create_new_folder_outlined, color: gold),
-                                  title: const Text('Create Subfolder', style: TextStyle(color: Colors.white)),
+                                  title: Text(
+                                    'Create Subfolder',
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
+                                  ),
                                   onTap: () {
                                     Navigator.pop(context);
                                     _showCreateSubfolderDialog();
@@ -384,7 +429,12 @@ class _FolderViewScreenState extends ConsumerState<FolderViewScreen> {
                                 ),
                                 ListTile(
                                   leading: const Icon(Icons.upload_file_outlined, color: gold),
-                                  title: const Text('Upload Photo / Video', style: TextStyle(color: Colors.white)),
+                                  title: Text(
+                                    'Upload Photo / Video',
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
+                                  ),
                                   onTap: () {
                                     Navigator.pop(context);
                                     _uploadMedia();
@@ -392,7 +442,12 @@ class _FolderViewScreenState extends ConsumerState<FolderViewScreen> {
                                 ),
                                 ListTile(
                                   leading: const Icon(Icons.qr_code_rounded, color: gold),
-                                  title: const Text('Get Folder QR Code', style: TextStyle(color: Colors.white)),
+                                  title: Text(
+                                    'Get Folder QR Code',
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
+                                  ),
                                   onTap: () {
                                     Navigator.pop(context);
                                     QrDisplayDialog.show(

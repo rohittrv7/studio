@@ -12,7 +12,6 @@ class PlansManagerScreen extends ConsumerWidget {
     final plansAsync = ref.watch(plansListProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
       appBar: AppBar(
         title: const Text('My Pricing Plans'),
         centerTitle: true,
@@ -52,14 +51,14 @@ class PlansManagerScreen extends ConsumerWidget {
                       child: const Icon(Icons.payments_outlined, color: gold, size: 36),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       'No pricing plans created yet.',
-                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Create pricing packages for clients to select.',
-                      style: TextStyle(color: Colors.grey, fontSize: 13),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
                     ),
                   ],
                 ),
@@ -87,9 +86,17 @@ class PlansManagerScreen extends ConsumerWidget {
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (c) => AlertDialog(
-                        backgroundColor: const Color(0xFF161616),
-                        title: const Text('Delete Plan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        content: Text('Are you sure you want to delete "${plan.name}"?'),
+                        backgroundColor: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF161616)
+                            : const Color(0xFFF7F7F7),
+                        title: Text(
+                          'Delete Plan',
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold),
+                        ),
+                        content: Text(
+                          'Are you sure you want to delete "${plan.name}"?',
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                        ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(c, false),
@@ -117,9 +124,15 @@ class PlansManagerScreen extends ConsumerWidget {
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF161616),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF161616)
+                          : const Color(0xFFF7F7F7),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFF222222)),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF2E2E2E)
+                            : const Color(0xFFE5E5E5),
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -130,7 +143,11 @@ class PlansManagerScreen extends ConsumerWidget {
                             Expanded(
                               child: Text(
                                 plan.name,
-                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                             Text(
@@ -142,7 +159,11 @@ class PlansManagerScreen extends ConsumerWidget {
                         const SizedBox(height: 8),
                         Text(
                           plan.description,
-                          style: const TextStyle(color: Colors.grey, fontSize: 13, height: 1.4),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 13,
+                            height: 1.4,
+                          ),
                         ),
                       ],
                     ),
@@ -173,9 +194,13 @@ class PlansManagerScreen extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return AlertDialog(
-          backgroundColor: const Color(0xFF161616),
-          title: const Text('Create Plan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          backgroundColor: isDark ? const Color(0xFF161616) : const Color(0xFFF7F7F7),
+          title: Text(
+            'Create Plan',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold),
+          ),
           content: Form(
             key: formKey,
             child: SingleChildScrollView(
@@ -184,7 +209,7 @@ class PlansManagerScreen extends ConsumerWidget {
                 children: [
                   TextFormField(
                     controller: nameCtrl,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     decoration: const InputDecoration(
                       hintText: 'Plan Name (e.g. Wedding Package)',
                     ),
@@ -193,7 +218,7 @@ class PlansManagerScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: priceCtrl,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: const InputDecoration(
@@ -204,7 +229,7 @@ class PlansManagerScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: descCtrl,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     maxLines: 3,
                     decoration: const InputDecoration(
                       hintText: 'Plan Details (session hours, photo counts, edits, deliveries)',

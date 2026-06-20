@@ -67,14 +67,17 @@ class BookingsScreen extends ConsumerWidget {
     const gold = Color(0xFFE8B86D);
     final statusColor = _getStatusColor(booking.status);
     final shootDateStr = '${booking.bookingDate.toLocal().toString().split(' ')[0]} at ${TimeOfDay.fromDateTime(booking.bookingDate.toLocal()).format(context)}';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF161616),
+        color: isDark ? const Color(0xFF161616) : const Color(0xFFF7F7F7),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF222222)),
+        border: Border.all(
+          color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE5E5E5),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,9 +89,9 @@ class BookingsScreen extends ConsumerWidget {
               Expanded(
                 child: Text(
                   isStudio
-                      ? 'Client: ${booking.customer?.name ?? 'Anonymous'}'
+                      ? 'Customer: ${booking.customer?.name ?? 'Anonymous'}'
                       : 'Studio: ${booking.studioOwner?.studioName ?? booking.studioOwner?.name ?? 'Photography Studio'}',
-                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
               Container(
@@ -109,18 +112,24 @@ class BookingsScreen extends ConsumerWidget {
           if (isStudio)
             Text(
               '📞 Contact: ${booking.customer?.phone ?? 'N/A'}',
-              style: const TextStyle(color: Color(0xFFBBBBBB), fontSize: 12),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12),
             ),
-          const Divider(color: Color(0xFF2A2A2A), height: 20),
+          Divider(
+            color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE5E5E5),
+            height: 20,
+          ),
 
           // ── Shoot Details ──────────────────────────────────────────────────
-          _buildInfoRow(Icons.event_outlined, 'Shoot Date', shootDateStr),
+          _buildInfoRow(context, Icons.event_outlined, 'Shoot Date', shootDateStr),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.location_on_outlined, 'Venue Address', booking.shootAddress),
+          _buildInfoRow(context, Icons.location_on_outlined, 'Venue Address', booking.shootAddress),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.camera_alt_outlined, 'Selected Package', booking.plan?.name ?? 'Custom Package'),
+          _buildInfoRow(context, Icons.camera_alt_outlined, 'Selected Package', booking.plan?.name ?? 'Custom Package'),
 
-          const Divider(color: Color(0xFF2A2A2A), height: 20),
+          Divider(
+            color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE5E5E5),
+            height: 20,
+          ),
 
           // ── Pricing Breakdown ──────────────────────────────────────────────
           Row(
@@ -129,15 +138,34 @@ class BookingsScreen extends ConsumerWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Total Package Price', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                  Text(
+                    'Total Package Price',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text('₹${booking.totalPrice.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                  Text(
+                    '₹${booking.totalPrice.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text('25% Advance Paid', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                  Text(
+                    '25% Advance Paid',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text('₹${booking.advancePaid.toStringAsFixed(0)}', style: const TextStyle(color: gold, fontSize: 14, fontWeight: FontWeight.bold)),
                 ],
@@ -183,17 +211,27 @@ class BookingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(BuildContext context, IconData icon, String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, color: const Color(0xFFE8B86D), size: 16),
         const SizedBox(width: 8),
-        Text('$label: ', style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500)),
+        Text(
+          '$label: ',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(color: Colors.white, fontSize: 12),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontSize: 12,
+            ),
           ),
         ),
       ],

@@ -94,7 +94,7 @@ class HomeView extends ConsumerWidget {
                       child: _buildStatCard(
                         context,
                         title: 'Role',
-                        value: isStudioOwner ? 'Studio' : 'Client',
+                        value: isStudioOwner ? 'Studio' : 'Customer',
                         icon: isStudioOwner ? Icons.camera_alt_outlined : Icons.person_outline,
                       ),
                     ),
@@ -139,7 +139,7 @@ class HomeView extends ConsumerWidget {
                   _buildActionCard(
                     context,
                     title: 'Create Gallery',
-                    subtitle: 'Create a new client photo collection',
+                    subtitle: 'Create a new customer photo collection',
                     icon: Icons.add_to_photos_outlined,
                     color: gold,
                     onTap: onCreateGallery,
@@ -224,9 +224,15 @@ class HomeView extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF161616),
+        color: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF161616)
+            : const Color(0xFFF7F7F7),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF2E2E2E)
+              : const Color(0xFFE5E5E5),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,8 +241,8 @@ class HomeView extends ConsumerWidget {
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
@@ -244,8 +250,8 @@ class HomeView extends ConsumerWidget {
           const SizedBox(height: 4),
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.grey,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontSize: 12,
             ),
           ),
@@ -267,9 +273,15 @@ class HomeView extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF161616),
+          color: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF161616)
+              : const Color(0xFFF7F7F7),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF222222)),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF2E2E2E)
+                : const Color(0xFFE5E5E5),
+          ),
         ),
         child: Row(
           children: [
@@ -288,8 +300,8 @@ class HomeView extends ConsumerWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -297,8 +309,8 @@ class HomeView extends ConsumerWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: Colors.grey,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 11,
                     ),
                   ),

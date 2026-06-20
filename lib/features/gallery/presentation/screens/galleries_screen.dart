@@ -16,6 +16,7 @@ import '../providers/gallery_provider.dart';
 import '../widgets/gallery_card.dart';
 import '../widgets/home_view.dart';
 import '../widgets/profile_view.dart';
+import '../../../../core/widgets/error_display.dart';
 import '../../../studios/presentation/screens/studios_tab.dart';
 import '../../../bookings/presentation/screens/bookings_screen.dart';
 import '../../../bookings/data/repositories/bookings_repository.dart';
@@ -34,31 +35,11 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
   int _currentIndex = 0; // 0: Home, 1: Galleries, 2: Profile
 
   Widget _buildErrorWidget(Object error) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString())),
-        );
-      }
-    });
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.error_outline_rounded,
-              color: Color(0xFF666666), size: 40),
-          const SizedBox(height: 12),
-          const Text(
-            'Failed to load galleries.',
-            style: TextStyle(color: Color(0xFF888888)),
-          ),
-          const SizedBox(height: 16),
-          TextButton(
-            onPressed: () => ref.read(galleryListProvider.notifier).refresh(),
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
+    return ErrorDisplay(
+      title: 'Failed to Load Galleries',
+      message: 'Something went wrong: ${error.toString()}',
+      onRetry: () => ref.read(galleryListProvider.notifier).refresh(),
+      retryLabel: 'Retry',
     );
   }
 
@@ -204,7 +185,6 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
         child: Scaffold(
-          backgroundColor: const Color(0xFF0D0D0D),
           body: SafeArea(
             child: Column(
               children: [
@@ -230,8 +210,8 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
                       Expanded(
                         child: Text(
                           title,
-                          style: const TextStyle(
-                            color: Color(0xFFF2F2F2),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 20,
                             fontWeight: FontWeight.w600,
                             letterSpacing: -0.3,
@@ -287,7 +267,9 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
                   onPressed: () {
                     showModalBottomSheet<void>(
                       context: context,
-                      backgroundColor: const Color(0xFF161616),
+                      backgroundColor: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF161616)
+                          : const Color(0xFFF7F7F7),
                       shape: const RoundedRectangleBorder(
                         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                       ),
@@ -298,7 +280,12 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
                             children: [
                               ListTile(
                                 leading: const Icon(Icons.collections_outlined, color: gold),
-                                title: const Text('Create Gallery', style: TextStyle(color: Colors.white)),
+                                title: Text(
+                                  'Create Gallery',
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ),
                                 onTap: () {
                                   Navigator.pop(context);
                                   _showCreateGalleryDialog();
@@ -306,7 +293,12 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
                               ),
                               ListTile(
                                 leading: const Icon(Icons.create_new_folder_outlined, color: gold),
-                                title: const Text('Create Folder in Gallery', style: TextStyle(color: Colors.white)),
+                                title: Text(
+                                  'Create Folder in Gallery',
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ),
                                 onTap: () {
                                   Navigator.pop(context);
                                   _showCreateFolderFromOutsideDialog();
@@ -314,7 +306,12 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
                               ),
                               ListTile(
                                 leading: const Icon(Icons.upload_file_outlined, color: gold),
-                                title: const Text('Upload to Gallery', style: TextStyle(color: Colors.white)),
+                                title: Text(
+                                  'Upload to Gallery',
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ),
                                 onTap: () {
                                   Navigator.pop(context);
                                   _showUploadMediaFromOutsideDialog();
@@ -331,9 +328,11 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
               : null,
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _currentIndex,
-            backgroundColor: const Color(0xFF161616),
+            backgroundColor: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF161616)
+                : const Color(0xFFF7F7F7),
             selectedItemColor: gold,
-            unselectedItemColor: const Color(0xFF888888),
+            unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
             showSelectedLabels: true,
             showUnselectedLabels: true,
             type: BottomNavigationBarType.fixed,
@@ -369,19 +368,20 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
             return AlertDialog(
-              backgroundColor: const Color(0xFF161616),
-              title: const Text('Create Folder', style: TextStyle(color: Colors.white)),
+              backgroundColor: isDark ? const Color(0xFF161616) : const Color(0xFFF7F7F7),
+              title: Text('Create Folder', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Select Gallery:', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text('Select Gallery:', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
                   DropdownButton<String>(
                     value: selectedGalleryId,
-                    dropdownColor: const Color(0xFF161616),
+                    dropdownColor: isDark ? const Color(0xFF161616) : const Color(0xFFF7F7F7),
                     isExpanded: true,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     items: galleries.map((g) {
                       return DropdownMenuItem<String>(
                         value: g.id,
@@ -477,21 +477,22 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
         builder: (context) {
           return StatefulBuilder(
             builder: (context, setState) {
+              final isDark = Theme.of(context).brightness == Brightness.dark;
               return AlertDialog(
-                backgroundColor: const Color(0xFF161616),
-                title: const Text('Select Gallery to Upload', style: TextStyle(color: Colors.white)),
+                backgroundColor: isDark ? const Color(0xFF161616) : const Color(0xFFF7F7F7),
+                title: Text('Select Gallery to Upload', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                 content: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Uploading $totalFiles selected files.', style: const TextStyle(color: Colors.white70)),
+                    Text('Uploading $totalFiles selected files.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                     const SizedBox(height: 16),
-                    const Text('Select Target Gallery:', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    Text('Select Target Gallery:', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
                     DropdownButton<String>(
                       value: selectedGalleryId,
-                      dropdownColor: const Color(0xFF161616),
+                      dropdownColor: isDark ? const Color(0xFF161616) : const Color(0xFFF7F7F7),
                       isExpanded: true,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       items: galleries.map((g) {
                         return DropdownMenuItem<String>(
                           value: g.id,
@@ -535,8 +536,9 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
                               final double overallProgress = totalFiles > 0
                                   ? (completedCount + currentFileProgress) / totalFiles
                                   : 0.0;
+                              final isDark = Theme.of(dialogCtx).brightness == Brightness.dark;
                               return AlertDialog(
-                                backgroundColor: const Color(0xFF161616),
+                                backgroundColor: isDark ? const Color(0xFF161616) : const Color(0xFFF7F7F7),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                 content: Column(
                                   mainAxisSize: MainAxisSize.min,
@@ -545,23 +547,33 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
                                     const SizedBox(height: 16),
                                     Text(
                                       'Uploading Media (${completedCount + 1}/$totalFiles)',
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                      style: TextStyle(
+                                        color: Theme.of(dialogCtx).colorScheme.onSurface,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
                                     ),
                                     const SizedBox(height: 16),
                                     LinearProgressIndicator(
                                       value: overallProgress,
-                                      backgroundColor: Colors.white12,
+                                      backgroundColor: Theme.of(dialogCtx).colorScheme.surfaceContainerHighest,
                                       valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE8B86D)),
                                     ),
                                     const SizedBox(height: 12),
                                     Text(
                                       '${(overallProgress * 100).toInt()}% completed',
-                                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                                      style: TextStyle(
+                                        color: Theme.of(dialogCtx).colorScheme.onSurface,
+                                        fontSize: 13,
+                                      ),
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
                                       statusText,
-                                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                      style: TextStyle(
+                                        color: Theme.of(dialogCtx).colorScheme.onSurfaceVariant,
+                                        fontSize: 12,
+                                      ),
                                       textAlign: TextAlign.center,
                                     ),
                                   ],
@@ -645,15 +657,16 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
     showDialog<void>(
       context: context,
       builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return AlertDialog(
-          backgroundColor: const Color(0xFF161616),
-          title: const Text('Create Gallery', style: TextStyle(color: Colors.white)),
+          backgroundColor: isDark ? const Color(0xFF161616) : const Color(0xFFF7F7F7),
+          title: Text('Create Gallery', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
           content: TextField(
             controller: controller,
-            style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            decoration: InputDecoration(
               hintText: 'Gallery Name',
-              hintStyle: TextStyle(color: Colors.grey),
+              hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             autofocus: true,
           ),
@@ -851,11 +864,12 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
               }
             }
 
+            final isDark = Theme.of(context).brightness == Brightness.dark;
             return AlertDialog(
-              backgroundColor: const Color(0xFF161616),
-              title: const Text(
+              backgroundColor: isDark ? const Color(0xFF161616) : const Color(0xFFF7F7F7),
+              title: Text(
                 'Edit Profile',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold),
               ),
               content: SingleChildScrollView(
                 child: Column(
@@ -871,7 +885,7 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
                             width: 90,
                             height: 90,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E1E1E),
+                              color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFEEEEEE),
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: const Color(0xFFE8B86D).withValues(alpha: 0.5),
@@ -907,21 +921,21 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
                     const SizedBox(height: 24),
                     TextField(
                       controller: nameController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                      decoration: InputDecoration(
                         labelText: 'Name',
-                        labelStyle: TextStyle(color: Colors.grey),
-                        prefixIcon: Icon(Icons.person_outline),
+                        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        prefixIcon: const Icon(Icons.person_outline),
                       ),
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: emailController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                      decoration: InputDecoration(
                         labelText: 'Email',
-                        labelStyle: TextStyle(color: Colors.grey),
-                        prefixIcon: Icon(Icons.email_outlined),
+                        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        prefixIcon: const Icon(Icons.email_outlined),
                       ),
                     ),
                   ],

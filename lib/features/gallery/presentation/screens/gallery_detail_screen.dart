@@ -15,6 +15,7 @@ import '../providers/gallery_provider.dart';
 import '../widgets/folder_tile.dart';
 import '../../../../core/utils/security_util.dart';
 import '../../../media/presentation/widgets/media_grid.dart';
+import '../../../../core/widgets/error_display.dart';
 
 /// Gallery detail screen — dark theme with folder tree.
 class GalleryDetailScreen extends ConsumerStatefulWidget {
@@ -55,15 +56,16 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
     showDialog<void>(
       context: context,
       builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return AlertDialog(
-          backgroundColor: const Color(0xFF161616),
-          title: const Text('Create Folder', style: TextStyle(color: Colors.white)),
+          backgroundColor: isDark ? const Color(0xFF161616) : const Color(0xFFF7F7F7),
+          title: Text('Create Folder', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
           content: TextField(
             controller: controller,
-            style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            decoration: InputDecoration(
               hintText: 'Folder Name',
-              hintStyle: TextStyle(color: Colors.grey),
+              hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             autofocus: true,
           ),
@@ -133,8 +135,9 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
                 final double overallProgress = totalFiles > 0
                     ? (completedCount + currentFileProgress) / totalFiles
                     : 0.0;
+                final isDark = Theme.of(context).brightness == Brightness.dark;
                 return AlertDialog(
-                  backgroundColor: const Color(0xFF161616),
+                  backgroundColor: isDark ? const Color(0xFF161616) : const Color(0xFFF7F7F7),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   content: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -143,23 +146,33 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
                       const SizedBox(height: 16),
                       Text(
                         'Uploading Media (${completedCount + 1}/$totalFiles)',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       LinearProgressIndicator(
                         value: overallProgress,
-                        backgroundColor: Colors.white12,
+                        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                         valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE8B86D)),
                       ),
                       const SizedBox(height: 12),
                       Text(
                         '${(overallProgress * 100).toInt()}% completed',
-                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 13,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         statusText,
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -277,7 +290,6 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
         child: Scaffold(
-          backgroundColor: const Color(0xFF0D0D0D),
           body: SafeArea(
             child: Column(
               children: [
@@ -317,11 +329,10 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
                       child: CircularProgressIndicator(
                           color: gold, strokeWidth: 2),
                     ),
-                    error: (e, _) => Center(
-                      child: Text(
-                        'Error loading gallery: $e',
-                        style: const TextStyle(color: Color(0xFF888888)),
-                      ),
+                    error: (e, _) => ErrorDisplay(
+                      title: 'Failed to Load Gallery',
+                      message: e.toString(),
+                      onRetry: () => ref.invalidate(galleryDetailProvider(widget.id)),
                     ),
                     data: (gallery) {
                       return folderTreeAsync.when(
@@ -329,11 +340,10 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
                           child: CircularProgressIndicator(
                               color: gold, strokeWidth: 2),
                         ),
-                        error: (e, _) => Center(
-                          child: Text(
-                            'Error loading folders: $e',
-                            style: const TextStyle(color: Color(0xFF888888)),
-                          ),
+                        error: (e, _) => ErrorDisplay(
+                          title: 'Failed to Load Folders',
+                          message: e.toString(),
+                          onRetry: () => ref.invalidate(folderTreeProvider(widget.id)),
                         ),
                         data: (folders) {
                           final folderSlivers = [
@@ -401,7 +411,9 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
                   onPressed: () {
                     showModalBottomSheet<void>(
                       context: context,
-                      backgroundColor: const Color(0xFF161616),
+                      backgroundColor: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF161616)
+                          : const Color(0xFFF7F7F7),
                       shape: const RoundedRectangleBorder(
                         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                       ),
@@ -412,7 +424,7 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
                             children: [
                               ListTile(
                                 leading: const Icon(Icons.create_new_folder_outlined, color: gold),
-                                title: const Text('Create Folder', style: TextStyle(color: Colors.white)),
+                                title: Text('Create Folder', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                                 onTap: () {
                                   Navigator.pop(context);
                                   _showCreateFolderDialog();
@@ -420,7 +432,7 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
                               ),
                               ListTile(
                                 leading: const Icon(Icons.upload_file_outlined, color: gold),
-                                title: const Text('Upload Photo / Video', style: TextStyle(color: Colors.white)),
+                                title: Text('Upload Photo / Video', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                                 onTap: () {
                                   Navigator.pop(context);
                                   _uploadMedia();
@@ -608,12 +620,13 @@ class _AssignCustomerDialogState extends ConsumerState<_AssignCustomerDialog> {
     const gold = Color(0xFFE8B86D);
     final customersAsync = ref.watch(customersListProvider);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return AlertDialog(
-      backgroundColor: const Color(0xFF161616),
+      backgroundColor: isDark ? const Color(0xFF161616) : const Color(0xFFF7F7F7),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text(
         _isCreatingNew ? 'Create & Assign Customer' : 'Assign Customer',
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold),
       ),
       content: SizedBox(
         width: double.maxFinite,
@@ -661,25 +674,25 @@ class _AssignCustomerDialogState extends ConsumerState<_AssignCustomerDialog> {
         children: [
           TextFormField(
             controller: _nameController,
-            style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            decoration: InputDecoration(
               labelText: 'Name',
-              labelStyle: TextStyle(color: Colors.grey),
-              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
-              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFE8B86D))),
+              labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Theme.of(context).colorScheme.outline)),
+              focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFE8B86D))),
             ),
             validator: (v) => v == null || v.trim().isEmpty ? 'Name is required' : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _phoneController,
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Phone',
-              labelStyle: TextStyle(color: Colors.grey),
-              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
-              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFE8B86D))),
+              labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Theme.of(context).colorScheme.outline)),
+              focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFE8B86D))),
             ),
             validator: (v) {
               final val = v?.trim() ?? '';
@@ -701,13 +714,13 @@ class _AssignCustomerDialogState extends ConsumerState<_AssignCustomerDialog> {
       mainAxisSize: MainAxisSize.min,
       children: [
         TextField(
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+          decoration: InputDecoration(
             hintText: 'Search by name or phone...',
-            hintStyle: TextStyle(color: Colors.grey),
-            prefixIcon: Icon(Icons.search, color: Colors.grey),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
-            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: gold)),
+            hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            prefixIcon: Icon(Icons.search, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Theme.of(context).colorScheme.outline)),
+            focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: gold)),
           ),
           onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
         ),
@@ -729,10 +742,10 @@ class _AssignCustomerDialogState extends ConsumerState<_AssignCustomerDialog> {
               }).toList();
 
               if (filtered.isEmpty) {
-                return const SizedBox(
+                return SizedBox(
                   height: 100,
                   child: Center(
-                    child: Text('No customers found', style: TextStyle(color: Colors.grey)),
+                    child: Text('No customers found', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                   ),
                 );
               }
@@ -746,8 +759,8 @@ class _AssignCustomerDialogState extends ConsumerState<_AssignCustomerDialog> {
                     final customer = filtered[idx];
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text(customer.name, style: const TextStyle(color: Colors.white)),
-                      subtitle: Text(customer.phone, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      title: Text(customer.name, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+                      subtitle: Text(customer.phone, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
                       trailing: const Icon(Icons.chevron_right, color: gold),
                       onTap: () => _handleAssign(customer.id),
                     );
@@ -832,14 +845,17 @@ class _FavoritesFolderTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const red = Colors.redAccent;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF161616),
+          color: isDark ? const Color(0xFF161616) : const Color(0xFFF7F7F7),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF282828)),
+          border: Border.all(
+            color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE5E5E5),
+          ),
         ),
         child: Row(
           children: [
@@ -857,11 +873,11 @@ class _FavoritesFolderTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 14),
-            const Expanded(
+            Expanded(
               child: Text(
                 'Favorites',
                 style: TextStyle(
-                  color: Color(0xFFF2F2F2),
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),

@@ -17,8 +17,8 @@ class ProfileView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authNotifierProvider);
     if (authState is! AuthAuthenticated) {
-      return const Center(
-        child: Text('Not logged in', style: TextStyle(color: Colors.white)),
+      return Center(
+        child: Text('Not logged in', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
       );
     }
 
@@ -38,8 +38,8 @@ class ProfileView extends ConsumerWidget {
               // User info
               Text(
                 user.name,
-                style: const TextStyle(
-                  color: Color(0xFFEEEEEE),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   letterSpacing: -0.3,
@@ -49,8 +49,8 @@ class ProfileView extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Text(
                   user.email!,
-                  style: const TextStyle(
-                    color: Color(0xFF888888),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 14,
                   ),
                 ),
@@ -60,7 +60,9 @@ class ProfileView extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E),
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF1E1E1E)
+                      : const Color(0xFFEEEEEE),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: gold.withValues(alpha: 0.2)),
                 ),
@@ -77,6 +79,7 @@ class ProfileView extends ConsumerWidget {
 
               // Action Tiles
               _buildListTile(
+                context,
                 icon: Icons.edit_outlined,
                 title: 'Edit Profile',
                 subtitle: 'Update your display name and email',
@@ -85,6 +88,7 @@ class ProfileView extends ConsumerWidget {
               if (user.isStudioOwner) ...[
                 const SizedBox(height: 12),
                 _buildListTile(
+                  context,
                   icon: Icons.payments_outlined,
                   title: 'My Pricing Plans',
                   subtitle: 'Manage shoot package rates & details',
@@ -100,6 +104,7 @@ class ProfileView extends ConsumerWidget {
               ],
               const SizedBox(height: 12),
               _buildListTile(
+                context,
                 icon: Icons.security_rounded,
                 title: 'Security & Protections',
                 subtitle: 'Learn about screenshot and download guards',
@@ -107,11 +112,13 @@ class ProfileView extends ConsumerWidget {
                   showDialog<void>(
                     context: context,
                     builder: (context) => AlertDialog(
-                      backgroundColor: const Color(0xFF161616),
-                      title: const Text('Security Features', style: TextStyle(color: Colors.white)),
-                      content: const Text(
+                      backgroundColor: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF161616)
+                          : const Color(0xFFF7F7F7),
+                      title: Text('Security Features', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+                      content: Text(
                         'This application automatically prevents taking screenshots, video recording, and unauthorized sharing/download of media in galleries you do not own.',
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                       actions: [
                         TextButton(
@@ -125,6 +132,7 @@ class ProfileView extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               _buildListTile(
+                context,
                 icon: Icons.help_outline_rounded,
                 title: 'Help & Support',
                 subtitle: 'Contact us for help with your galleries',
@@ -132,11 +140,13 @@ class ProfileView extends ConsumerWidget {
                   showDialog<void>(
                     context: context,
                     builder: (context) => AlertDialog(
-                      backgroundColor: const Color(0xFF161616),
-                      title: const Text('Support', style: TextStyle(color: Colors.white)),
-                      content: const Text(
+                      backgroundColor: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF161616)
+                          : const Color(0xFFF7F7F7),
+                      title: Text('Support', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+                      content: Text(
                         'If you have any questions or experience issues, please contact your photography studio administrator.',
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                       actions: [
                         TextButton(
@@ -179,7 +189,8 @@ class ProfileView extends ConsumerWidget {
         );
   }
 
-  Widget _buildListTile({
+  Widget _buildListTile(
+    BuildContext context, {
     required IconData icon,
     required String title,
     required String subtitle,
@@ -191,9 +202,15 @@ class ProfileView extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF161616),
+          color: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF161616)
+              : const Color(0xFFF7F7F7),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF222222)),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF2E2E2E)
+                : const Color(0xFFE5E5E5),
+          ),
         ),
         child: Row(
           children: [
@@ -205,8 +222,8 @@ class ProfileView extends ConsumerWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -214,8 +231,8 @@ class ProfileView extends ConsumerWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: Colors.grey,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 11,
                     ),
                   ),

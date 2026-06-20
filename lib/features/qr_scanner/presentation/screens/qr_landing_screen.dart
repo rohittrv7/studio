@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/storage/storage_providers.dart';
+import '../../../../core/widgets/error_display.dart';
 import '../providers/qr_provider.dart';
 
 /// QR deep-link landing screen.
@@ -81,62 +82,13 @@ class _QrLandingScreenState extends ConsumerState<QrLandingScreen> {
             return const Center(child: CircularProgressIndicator());
           },
           error: (error, _) {
-            return const _ErrorCard(
-              message: 'This QR is not valid',
+            return ErrorDisplay(
+              title: 'This QR is not valid',
+              message: 'The link may have expired or is incorrect.',
+              onRetry: () => context.go('/galleries'),
+              retryLabel: 'Go Back',
             );
           },
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Error card widget
-// ---------------------------------------------------------------------------
-
-class _ErrorCard extends StatelessWidget {
-  const _ErrorCard({
-    required this.message,
-    this.onRetry,
-  });
-
-  final String message;
-  final VoidCallback? onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 48,
-                  color: Theme.of(context).colorScheme.error,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-                if (onRetry != null) ...[
-                  const SizedBox(height: 24),
-                  FilledButton.icon(
-                    onPressed: onRetry,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Retry'),
-                  ),
-                ],
-              ],
-            ),
-          ),
         ),
       ),
     );
