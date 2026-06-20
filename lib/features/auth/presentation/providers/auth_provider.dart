@@ -315,6 +315,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final name = profile['name'] ?? (role == 'studio_owner' ? 'Studio Owner' : 'Customer');
         final email = profile['email'];
         final profilePhoto = profile['profilePhoto'];
+        final studioName = profile['studioName'];
+        final location = profile['location'];
+        final description = profile['description'];
 
         final user = AuthUser(
           id: sub,
@@ -323,6 +326,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
           profilePhoto: profilePhoto,
           role: role,
           galleryIds: galleryIds,
+          studioName: studioName,
+          location: location,
+          description: description,
         );
         state = AuthAuthenticated(user);
       }

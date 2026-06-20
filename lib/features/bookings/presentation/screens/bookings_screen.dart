@@ -15,11 +15,23 @@ class BookingsScreen extends ConsumerWidget {
     final isStudio = user?.isStudioOwner ?? false;
     final bookingsAsync = ref.watch(bookingsListProvider);
 
-    return bookingsAsync.when(
-          loading: () => const Center(
-            child: CircularProgressIndicator(color: gold, strokeWidth: 2),
-          ),
-          error: (err, _) => Center(
+    return RefreshIndicator(
+      onRefresh: () async {
+        return ref.read(bookingsListProvider.notifier).loadBookings();
+      },
+      color: gold,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF1A1A1A)
+          : const Color(0xFFF5F5F5),
+      child: bookingsAsync.when(
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: gold, strokeWidth: 2),
+        ),
+        error: (err, _) => SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.6,
+            alignment: Alignment.center,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -34,9 +46,14 @@ class BookingsScreen extends ConsumerWidget {
               ],
             ),
           ),
-          data: (bookings) {
-            if (bookings.isEmpty) {
-              return Center(
+        ),
+        data: (bookings) {
+          if (bookings.isEmpty) {
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Container(
+                height: MediaQuery.of(context).size.height * 0.6,
+                alignment: Alignment.center,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -48,19 +65,22 @@ class BookingsScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-              );
-            }
-
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: bookings.length,
-              itemBuilder: (context, index) {
-                final booking = bookings[index];
-                return _buildBookingCard(context, ref, booking, isStudio);
-              },
+              ),
             );
-          },
-        );
+          }
+
+          return ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: bookings.length,
+            itemBuilder: (context, index) {
+              final booking = bookings[index];
+              return _buildBookingCard(context, ref, booking, isStudio);
+            },
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildBookingCard(BuildContext context, WidgetRef ref, BookingModel booking, bool isStudio) {

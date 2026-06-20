@@ -32,6 +32,9 @@ abstract class HiveStorage {
     required String name,
     String? email,
     String? profilePhoto,
+    String? studioName,
+    String? location,
+    String? description,
   });
 
   /// Returns user profile information.
@@ -109,6 +112,9 @@ class HiveStorageImpl implements HiveStorage {
   static const String _userNameKey = 'userName';
   static const String _userEmailKey = 'userEmail';
   static const String _userProfilePhotoKey = 'userProfilePhoto';
+  static const String _studioNameKey = 'studioName';
+  static const String _locationKey = 'location';
+  static const String _descriptionKey = 'description';
 
   // Key name for the encryption key stored in keysBox
   static const String _encryptionKeyName = 'hiveEncryptionKey';
@@ -182,6 +188,9 @@ class HiveStorageImpl implements HiveStorage {
     await _authBox.delete(_userNameKey);
     await _authBox.delete(_userEmailKey);
     await _authBox.delete(_userProfilePhotoKey);
+    await _authBox.delete(_studioNameKey);
+    await _authBox.delete(_locationKey);
+    await _authBox.delete(_descriptionKey);
   }
 
   @override
@@ -189,10 +198,16 @@ class HiveStorageImpl implements HiveStorage {
     required String name,
     String? email,
     String? profilePhoto,
+    String? studioName,
+    String? location,
+    String? description,
   }) async {
     await _authBox.put(_userNameKey, name);
     await _authBox.put(_userEmailKey, email);
     await _authBox.put(_userProfilePhotoKey, profilePhoto);
+    await _authBox.put(_studioNameKey, studioName);
+    await _authBox.put(_locationKey, location);
+    await _authBox.put(_descriptionKey, description);
   }
 
   @override
@@ -201,6 +216,9 @@ class HiveStorageImpl implements HiveStorage {
       'name': _authBox.get(_userNameKey) as String?,
       'email': _authBox.get(_userEmailKey) as String?,
       'profilePhoto': _authBox.get(_userProfilePhotoKey) as String?,
+      'studioName': _authBox.get(_studioNameKey) as String?,
+      'location': _authBox.get(_locationKey) as String?,
+      'description': _authBox.get(_descriptionKey) as String?,
     };
   }
 

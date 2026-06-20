@@ -44,6 +44,9 @@ class _FakeHiveStorage implements HiveStorage {
     required String name,
     String? email,
     String? profilePhoto,
+    String? studioName,
+    String? location,
+    String? description,
   }) async {}
 
   @override
@@ -51,6 +54,9 @@ class _FakeHiveStorage implements HiveStorage {
         'name': null,
         'email': null,
         'profilePhoto': null,
+        'studioName': null,
+        'location': null,
+        'description': null,
       };
 
   @override

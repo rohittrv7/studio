@@ -19,6 +19,9 @@ class WebStorage implements HiveStorage {
   static const _userNameKey = 'sg_user_name';
   static const _userEmailKey = 'sg_user_email';
   static const _userProfilePhotoKey = 'sg_user_photo';
+  static const _studioNameKey = 'sg_studio_name';
+  static const _locationKey = 'sg_location';
+  static const _descriptionKey = 'sg_description';
 
   @override
   Future<void> saveTokens({
@@ -48,6 +51,9 @@ class WebStorage implements HiveStorage {
     html.window.localStorage.remove(_userNameKey);
     html.window.localStorage.remove(_userEmailKey);
     html.window.localStorage.remove(_userProfilePhotoKey);
+    html.window.localStorage.remove(_studioNameKey);
+    html.window.localStorage.remove(_locationKey);
+    html.window.localStorage.remove(_descriptionKey);
   }
 
   @override
@@ -55,6 +61,9 @@ class WebStorage implements HiveStorage {
     required String name,
     String? email,
     String? profilePhoto,
+    String? studioName,
+    String? location,
+    String? description,
   }) async {
     html.window.localStorage[_userNameKey] = name;
     if (email != null) {
@@ -67,6 +76,21 @@ class WebStorage implements HiveStorage {
     } else {
       html.window.localStorage.remove(_userProfilePhotoKey);
     }
+    if (studioName != null) {
+      html.window.localStorage[_studioNameKey] = studioName;
+    } else {
+      html.window.localStorage.remove(_studioNameKey);
+    }
+    if (location != null) {
+      html.window.localStorage[_locationKey] = location;
+    } else {
+      html.window.localStorage.remove(_locationKey);
+    }
+    if (description != null) {
+      html.window.localStorage[_descriptionKey] = description;
+    } else {
+      html.window.localStorage.remove(_descriptionKey);
+    }
   }
 
   @override
@@ -75,6 +99,9 @@ class WebStorage implements HiveStorage {
       'name': html.window.localStorage[_userNameKey],
       'email': html.window.localStorage[_userEmailKey],
       'profilePhoto': html.window.localStorage[_userProfilePhotoKey],
+      'studioName': html.window.localStorage[_studioNameKey],
+      'location': html.window.localStorage[_locationKey],
+      'description': html.window.localStorage[_descriptionKey],
     };
   }
 

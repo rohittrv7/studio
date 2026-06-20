@@ -116,11 +116,21 @@ class _MediaGridState extends ConsumerState<MediaGrid> {
     final hasPrepend = widget.prependSlivers != null && widget.prependSlivers!.isNotEmpty;
 
     // Empty state — only shown once the first load has finished and found nothing.
-    if (_allMedia.isEmpty && !_isLoadingMore) {
-      if (!hasPrepend) {
-        return widget.emptyPlaceholder ??
-            const Center(child: Text('No media in this folder'));
-      }
+    if (_allMedia.isEmpty && !_isLoadingMore && !hasPrepend) {
+      return CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverFillRemaining(
+            child: widget.emptyPlaceholder ??
+                const Center(
+                  child: Text(
+                    'No media in this folder',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+          ),
+        ],
+      );
     }
 
     // Watch gallery and auth details once at parent level for high performance
@@ -135,6 +145,7 @@ class _MediaGridState extends ConsumerState<MediaGrid> {
 
     return CustomScrollView(
       controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         if (widget.prependSlivers != null) ...widget.prependSlivers!,
 

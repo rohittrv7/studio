@@ -57,6 +57,9 @@ class AuthRepositoryImpl implements AuthRepository {
         name: model.user.name,
         email: model.user.email,
         profilePhoto: model.user.profilePhoto,
+        studioName: model.user.studioName,
+        location: model.user.location,
+        description: model.user.description,
       );
 
       return model.toEntity();
@@ -115,6 +118,9 @@ class AuthRepositoryImpl implements AuthRepository {
         name: model.name,
         email: model.email,
         profilePhoto: model.profilePhoto,
+        studioName: model.studioName,
+        location: model.location,
+        description: model.description,
       );
       return model.toEntity();
     } on DioException catch (e) {
@@ -165,6 +171,9 @@ class AuthRepositoryImpl implements AuthRepository {
         name: model.name,
         email: model.email,
         profilePhoto: model.profilePhoto,
+        studioName: model.studioName,
+        location: model.location,
+        description: model.description,
       );
       
       final entity = model.toEntity();

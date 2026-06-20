@@ -1,7 +1,7 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -17,7 +17,7 @@ class QrScannerScreen extends StatefulWidget {
   State<QrScannerScreen> createState() => _QrScannerScreenState();
 }
 
-class _QrScannerScreenState extends State<QrScannerScreen> {
+class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingObserver {
   MobileScannerController? _controller;
   bool _hasPermission = false;
   bool _isCheckingPermission = true;
@@ -28,6 +28,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkPermission();
   }
 
@@ -36,10 +37,15 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     if (status.isGranted) {
       if (mounted) {
         setState(() {
-          _controller = MobileScannerController();
+          _controller = MobileScannerController(autoStart: false);
           _hasPermission = true;
           _isCheckingPermission = false;
         });
+        try {
+          await _controller?.start();
+        } catch (e) {
+          debugPrint('Error starting camera: $e');
+        }
       }
     } else {
       if (mounted) {
@@ -55,8 +61,26 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_controller == null || !_hasPermission) return;
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _controller?.start();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        _controller?.stop();
+        break;
+      default:
+        break;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -140,13 +164,10 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             tooltip: 'Scan from Gallery',
             onPressed: () async {
               try {
-                final result = await FilePicker.platform.pickFiles(
-                  type: FileType.image,
-                  allowMultiple: false,
-                );
-                if (result == null || result.files.isEmpty) return;
-                final path = result.files.single.path;
-                if (path == null) return;
+                final picker = ImagePicker();
+                final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                if (image == null) return;
+                final path = image.path;
                 
                 final capture = await _controller!.analyzeImage(path);
                 if (capture != null && capture.barcodes.isNotEmpty) {
