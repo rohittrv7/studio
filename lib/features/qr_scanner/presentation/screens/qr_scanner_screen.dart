@@ -37,15 +37,10 @@ class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingOb
     if (status.isGranted) {
       if (mounted) {
         setState(() {
-          _controller = MobileScannerController(autoStart: false);
+          _controller = MobileScannerController();
           _hasPermission = true;
           _isCheckingPermission = false;
         });
-        try {
-          await _controller?.start();
-        } catch (e) {
-          debugPrint('Error starting camera: $e');
-        }
       }
     } else {
       if (mounted) {

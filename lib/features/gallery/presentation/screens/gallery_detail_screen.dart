@@ -697,8 +697,8 @@ class _AssignCustomerDialogState extends ConsumerState<_AssignCustomerDialog> {
             validator: (v) {
               final val = v?.trim() ?? '';
               if (val.isEmpty) return 'Phone is required';
-              if (!RegExp(r'^(?:\+[1-9]\d{6,14}|\d{10})$').hasMatch(val)) {
-                return 'Enter a valid 10-digit number or with country code';
+              if (!RegExp(r'^\d{10}$').hasMatch(val)) {
+                return 'Enter a valid 10-digit number';
               }
               return null;
             },
@@ -802,10 +802,7 @@ class _AssignCustomerDialogState extends ConsumerState<_AssignCustomerDialog> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _isLoading = true);
     try {
-      String phone = _phoneController.text.trim();
-      if (RegExp(r'^\d{10}$').hasMatch(phone)) {
-        phone = '+91$phone';
-      }
+      final phone = _phoneController.text.trim();
       final newCustomer = await ref.read(galleryRepositoryProvider).createCustomer(
         name: _nameController.text.trim(),
         phone: phone,

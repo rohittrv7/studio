@@ -109,24 +109,28 @@ class DownloadState {
     this.isDownloading = false,
     this.error,
     this.completed = false,
+    this.savePath,
   });
 
   final double progress; // 0.0 – 1.0
   final bool isDownloading;
   final String? error;
   final bool completed;
+  final String? savePath;
 
   DownloadState copyWith({
     double? progress,
     bool? isDownloading,
     String? error,
     bool? completed,
+    String? savePath,
   }) {
     return DownloadState(
       progress: progress ?? this.progress,
       isDownloading: isDownloading ?? this.isDownloading,
       error: error ?? this.error,
       completed: completed ?? this.completed,
+      savePath: savePath ?? this.savePath,
     );
   }
 }
@@ -153,35 +157,93 @@ class DownloadNotifier extends StateNotifier<Map<String, DownloadState>> {
     };
 
     try {
-      // Resolve platform-appropriate save directory.
-      // On Android we use external storage (visible in Downloads).
-      // On iOS getApplicationDocumentsDirectory is the user-accessible Documents folder.
-      final dir = Platform.isAndroid
-          ? (await getExternalStorageDirectory())
-          : (await getApplicationDocumentsDirectory());
-      final savePath = '${(dir ?? await getApplicationDocumentsDirectory()).path}/$fileName';
+      String? resolvedPath;
+      try {
+        if (Platform.isAndroid) {
+          final publicDownloadDir = Directory('/storage/emulated/0/Download');
+          if (await publicDownloadDir.exists()) {
+            resolvedPath = '${publicDownloadDir.path}/$fileName';
+          } else {
+            final extDir = await getExternalStorageDirectory();
+            resolvedPath = '${(extDir ?? await getApplicationDocumentsDirectory()).path}/$fileName';
+          }
+        } else {
+          final docDir = await getApplicationDocumentsDirectory();
+          resolvedPath = '${docDir.path}/$fileName';
+        }
+      } catch (_) {
+        final extDir = await getExternalStorageDirectory();
+        resolvedPath = '${(extDir ?? await getApplicationDocumentsDirectory()).path}/$fileName';
+      }
 
-      await _downloadUseCase(
-        galleryId: galleryId,
-        mediaId: mediaId,
-        savePath: savePath,
-        onReceiveProgress: (received, total) {
-          if (total > 0 && mounted) {
+      try {
+        await _downloadUseCase(
+          galleryId: galleryId,
+          mediaId: mediaId,
+          savePath: resolvedPath!,
+          onReceiveProgress: (received, total) {
+            if (total > 0 && mounted) {
+              state = {
+                ...state,
+                mediaId: DownloadState(
+                  isDownloading: true,
+                  progress: received / total,
+                ),
+              };
+            }
+          },
+        );
+      } catch (e) {
+        if (Platform.isAndroid && resolvedPath!.startsWith('/storage/emulated/0/Download')) {
+          try {
+            final extDir = await getExternalStorageDirectory();
+            resolvedPath = '${(extDir ?? await getApplicationDocumentsDirectory()).path}/$fileName';
+            await _downloadUseCase(
+              galleryId: galleryId,
+              mediaId: mediaId,
+              savePath: resolvedPath,
+              onReceiveProgress: (received, total) {
+                if (total > 0 && mounted) {
+                  state = {
+                    ...state,
+                    mediaId: DownloadState(
+                      isDownloading: true,
+                      progress: received / total,
+                    ),
+                  };
+                }
+              },
+            );
+          } catch (err) {
             state = {
               ...state,
               mediaId: DownloadState(
-                isDownloading: true,
-                progress: received / total,
+                isDownloading: false,
+                error: err.toString(),
               ),
             };
+            return;
           }
-        },
-      );
+        } else {
+          state = {
+            ...state,
+            mediaId: DownloadState(
+              isDownloading: false,
+              error: e.toString(),
+            ),
+          };
+          return;
+        }
+      }
 
       // Mark completed
       state = {
         ...state,
-        mediaId: const DownloadState(isDownloading: false, completed: true),
+        mediaId: DownloadState(
+          isDownloading: false,
+          completed: true,
+          savePath: resolvedPath,
+        ),
       };
 
       // Fire-and-forget analytics: record the download as a view event.

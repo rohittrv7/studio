@@ -40,10 +40,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    String phone = _phoneController.text.trim();
-    if (RegExp(r'^\d{10}$').hasMatch(phone)) {
-      phone = '+91$phone';
-    }
+    final phone = _phoneController.text.trim();
     final success = await ref.read(authNotifierProvider.notifier).sendOtp(
           phone: phone,
           userType: _selectedUserType,
@@ -369,7 +366,7 @@ class _PhoneField extends StatelessWidget {
             FilteringTextInputFormatter.allow(RegExp(r'[+\d]')),
           ],
           decoration: const InputDecoration(
-            hintText: '+91 98765 43210',
+            hintText: '98765 43210',
             prefixIcon: Padding(
               padding: EdgeInsets.only(left: 12, right: 8),
               child: Icon(Icons.phone_rounded, size: 20),
@@ -380,8 +377,8 @@ class _PhoneField extends StatelessWidget {
           validator: (value) {
             final v = value?.trim() ?? '';
             if (v.isEmpty) return 'Phone number is required.';
-            if (!RegExp(r'^(?:\+[1-9]\d{6,14}|\d{10})$').hasMatch(v)) {
-              return 'Enter a valid 10-digit number or with country code.';
+            if (!RegExp(r'^\d{10}$').hasMatch(v)) {
+              return 'Enter a valid 10-digit mobile number.';
             }
             return null;
           },

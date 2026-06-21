@@ -111,8 +111,17 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
         final curr = next[mediaId];
         if (curr == null) return;
         if (curr.completed && !(prev?.completed ?? false)) {
+          final savedMsg = curr.savePath != null
+              ? 'Saved to: ${curr.savePath}'
+              : 'Download complete';
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Download complete')),
+            SnackBar(
+              content: Text(
+                'Download complete!\n$savedMsg',
+                style: const TextStyle(fontSize: 13),
+              ),
+              duration: const Duration(seconds: 4),
+            ),
           );
         } else if (curr.error != null && prev?.error == null) {
           final capturedMediaId =
