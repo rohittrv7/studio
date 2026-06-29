@@ -30,11 +30,17 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     _showPaymentSheet(booking);
   }
 
-  void _showPaymentSheet(BookingModel booking) {
+  void _payRemainingBooking(BookingModel booking) {
+    _showPaymentSheet(booking, isRemaining: true);
+  }
+
+  void _showPaymentSheet(BookingModel booking, {bool isRemaining = false}) {
     final upiId = booking.studioOwner?.upiId ?? '';
     final qr = booking.studioOwner?.upiQrCode;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const gold = Color(0xFFE8B86D);
+
+    final amountToPay = isRemaining ? (booking.totalPrice - booking.advancePaid) : booking.advancePaid;
 
     File? receiptFile;
     String? receiptBase64;
@@ -148,7 +154,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                       ),
                     ),
                     Text(
-                      'Pay Studio Advance',
+                      isRemaining ? 'Pay Remaining Amount' : 'Pay Studio Advance',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 20,
@@ -157,7 +163,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Select your preferred payment method for the advance amount of ₹${booking.advancePaid.toStringAsFixed(0)}.',
+                      'Select your preferred payment method for the amount of ₹${amountToPay.toStringAsFixed(0)}.',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 13,
@@ -690,6 +696,51 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                 child: const Text('Pay Advance (25%)'),
               ),
             ],
+
+            // ── Actions (for Customers on CONFIRMED paid-advance bookings to pay remaining) ────
+            if (!isStudio && booking.status == 'CONFIRMED' && booking.isPaid && !booking.isFullPaid) ...[
+              const SizedBox(height: 20),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.greenAccent,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  minimumSize: const Size(double.infinity, 44),
+                ),
+                onPressed: () => _payRemainingBooking(booking),
+                child: const Text('Pay Remaining (75%)'),
+              ),
+            ],
+
+            // ── Actions (for Studio Owners on CONFIRMED bookings to verify advance payment) ────
+            if (isStudio && booking.status == 'CONFIRMED' && !booking.isPaid) ...[
+              const SizedBox(height: 20),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.greenAccent,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  minimumSize: const Size(double.infinity, 44),
+                ),
+                onPressed: () => _updateBookingPaymentStatus(context, booking.id, isPaid: true),
+                child: const Text('Verify & Mark Advance Paid'),
+              ),
+            ],
+
+            // ── Actions (for Studio Owners on CONFIRMED bookings to verify full payment) ────
+            if (isStudio && booking.status == 'CONFIRMED' && booking.isPaid && !booking.isFullPaid) ...[
+              const SizedBox(height: 20),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  minimumSize: const Size(double.infinity, 44),
+                ),
+                onPressed: () => _updateBookingPaymentStatus(context, booking.id, isFullPaid: true),
+                child: const Text('Verify & Mark Fully Paid'),
+              ),
+            ],
           ],
         ),
       ),
@@ -826,6 +877,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
               const SizedBox(height: 12),
               
               // Pricing Info
+              // Pricing Info
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -854,44 +906,119 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        booking.isPaid 
-                            ? 'Advance Paid' 
-                            : (booking.transactionRef != null && booking.transactionRef!.isNotEmpty
-                                ? 'Payment Reviewing'
-                                : 'Advance Pending'),
+                        'Advance (25%)',
                         style: TextStyle(
-                          color: booking.isPaid 
-                              ? Colors.greenAccent 
-                              : (booking.transactionRef != null && booking.transactionRef!.isNotEmpty
-                                  ? gold
-                                  : Colors.orangeAccent),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 11,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '₹${booking.advancePaid.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          color: gold,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      if (booking.transactionRef != null && booking.transactionRef!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'UTR: ${booking.transactionRef}',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 11,
+                      const SizedBox(height: 2),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '₹${booking.advancePaid.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              color: gold,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: booking.isPaid ? Colors.green.withValues(alpha: 0.2) : Colors.orange.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              booking.isPaid ? 'Paid' : 'Pending',
+                              style: TextStyle(
+                                color: booking.isPaid ? Colors.greenAccent : Colors.orangeAccent,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Remaining (75%)',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 11,
                         ),
-                      ],
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '₹${(booking.totalPrice - booking.advancePaid).toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              color: gold,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: booking.isFullPaid ? Colors.green.withValues(alpha: 0.2) : Colors.orange.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              booking.isFullPaid ? 'Paid' : 'Pending',
+                              style: TextStyle(
+                                color: booking.isFullPaid ? Colors.greenAccent : Colors.orangeAccent,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ],
               ),
+              
+              if (booking.transactionRef != null && booking.transactionRef!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Divider(color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE5E5E5)),
+                const SizedBox(height: 8),
+                Text(
+                  'PAYMENT EVIDENCE / RECEIPT',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Reference/UTR Number: ${booking.transactionRef}',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (booking.paymentScreenshot != null && booking.paymentScreenshot!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.memory(
+                      base64Decode(booking.paymentScreenshot!.split(',').last),
+                      height: 150,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const Text('Could not load screenshot'),
+                    ),
+                  ),
+                ],
+              ],
               
               const SizedBox(height: 24),
               
@@ -1061,6 +1188,35 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     } else {
       scaffoldMessenger.showSnackBar(
         const SnackBar(content: Text('Failed to update booking status. Please try again.')),
+      );
+    }
+  }
+
+  Future<void> _updateBookingPaymentStatus(BuildContext context, String bookingId, {bool? isPaid, bool? isFullPaid}) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFFE8B86D))),
+    );
+
+    final success = await ref.read(bookingsListProvider.notifier).updateBookingStatus(
+      bookingId,
+      'CONFIRMED',
+      isPaid: isPaid,
+      isFullPaid: isFullPaid,
+    );
+    
+    if (context.mounted) Navigator.pop(context); // Close loader
+
+    if (success) {
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(content: Text('Payment verification status updated successfully!')),
+      );
+    } else {
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(content: Text('Failed to update payment status. Please try again.')),
       );
     }
   }

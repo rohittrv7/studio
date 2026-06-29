@@ -292,7 +292,7 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
         : null;
 
     final hasFullAccess = galleryAsync.maybeWhen(
-      data: (g) => isStudioOwner || (g.customerId == user?.id),
+      data: (g) => isStudioOwner || (g.customerId == user?.id) || (g.customer?.phone == user?.phone),
       orElse: () => false,
     );
 

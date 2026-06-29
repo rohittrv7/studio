@@ -257,6 +257,13 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
                           tooltip: _isGrid ? 'List view' : 'Grid view',
                           onPressed: () => setState(() => _isGrid = !_isGrid),
                         ),
+                      // Add Direct Booking (Studio Owner only)
+                      if (isStudio && _currentIndex == 2)
+                        IconButton(
+                          icon: const Icon(Icons.add_rounded, color: gold, size: 24),
+                          tooltip: 'Add Booking',
+                          onPressed: () => _showAddBookingDialog(),
+                        ),
                       // Refresh button (Bookings)
                       if (showRefreshButton)
                         IconButton(
@@ -1013,7 +1020,210 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
     );
   }
 
+  void _showAddBookingDialog() {
+    ref.read(plansListProvider.notifier).loadPlans();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const gold = Color(0xFFE8B86D);
 
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+    final addressController = TextEditingController();
+
+    DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
+    String? selectedPlanId;
+    bool isPaid = false;
+    String paymentMethod = 'CASH';
+    bool isSaving = false;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> selectDate() async {
+              final date = await showDatePicker(
+                context: context,
+                initialDate: selectedDate,
+                firstDate: DateTime.now(),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
+              );
+              if (date != null) {
+                final time = await showTimePicker(
+                  context: context,
+                  initialTime: TimeOfDay.fromDateTime(selectedDate),
+                );
+                if (time != null) {
+                  setDialogState(() {
+                    selectedDate = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+                  });
+                }
+              }
+            }
+
+            Future<void> submit() async {
+              if (!(formKey.currentState?.validate() ?? false)) return;
+              if (selectedPlanId == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please select a pricing package.')),
+                );
+                return;
+              }
+
+              setDialogState(() {
+                isSaving = true;
+              });
+
+              final success = await ref.read(bookingsListProvider.notifier).createBooking(
+                selectedPlanId!,
+                selectedDate.toUtc().toIso8601String(),
+                addressController.text.trim(),
+                customerName: nameController.text.trim(),
+                customerPhone: phoneController.text.trim(),
+                isPaid: isPaid,
+                paymentMethod: paymentMethod,
+              );
+
+              if (context.mounted) {
+                setDialogState(() {
+                  isSaving = false;
+                });
+                if (success) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Direct booking created successfully!')),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Failed to create booking. Please try again.')),
+                  );
+                }
+              }
+            }
+
+            final plansAsync = ref.watch(plansListProvider);
+
+            return AlertDialog(
+              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(
+                'Create Direct Booking',
+                style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextFormField(
+                        controller: nameController,
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        decoration: const InputDecoration(labelText: 'Client Name *', hintText: 'Enter client name'),
+                        validator: (value) => value == null || value.trim().isEmpty ? 'Client name is required' : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: phoneController,
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        decoration: const InputDecoration(labelText: 'Client Phone *', hintText: 'Enter 10-digit number'),
+                        keyboardType: TextInputType.phone,
+                        validator: (value) => value == null || value.trim().isEmpty ? 'Client phone is required' : null,
+                      ),
+                      const SizedBox(height: 12),
+                      plansAsync.when(
+                        loading: () => const Center(child: CircularProgressIndicator(color: gold)),
+                        error: (err, _) => Text('Error loading packages: $err', style: const TextStyle(color: Colors.red)),
+                        data: (plans) {
+                          if (plans.isEmpty) {
+                            return const Text('No packages available. Please add a pricing package first.', style: TextStyle(color: Colors.redAccent, fontSize: 12));
+                          }
+                          return DropdownButtonFormField<String>(
+                            value: selectedPlanId,
+                            style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                            decoration: const InputDecoration(labelText: 'Select Package *'),
+                            dropdownColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+                            items: plans.map((p) {
+                              return DropdownMenuItem<String>(
+                                value: p.id,
+                                child: Text('${p.name} (₹${p.price.toStringAsFixed(0)})', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+                              );
+                            }).toList(),
+                            onChanged: (val) => setDialogState(() => selectedPlanId = val),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Shoot Date & Time', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        subtitle: Text(
+                          '${selectedDate.toLocal().toString().split(' ')[0]} at ${TimeOfDay.fromDateTime(selectedDate.toLocal()).format(context)}',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: isDark ? Colors.white : Colors.black),
+                        ),
+                        trailing: const Icon(Icons.calendar_today_rounded, color: gold),
+                        onTap: selectDate,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: addressController,
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        decoration: const InputDecoration(labelText: 'Shoot Address/Venue *', hintText: 'Enter shoot location'),
+                        maxLines: 2,
+                        validator: (value) => value == null || value.trim().isEmpty ? 'Shoot address is required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: isPaid,
+                            activeColor: gold,
+                            onChanged: (val) => setDialogState(() => isPaid = val ?? false),
+                          ),
+                          const Expanded(child: Text('Advance Paid (25%)', style: TextStyle(fontSize: 13))),
+                        ],
+                      ),
+                      if (isPaid) ...[
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: paymentMethod,
+                          style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                          decoration: const InputDecoration(labelText: 'Payment Method'),
+                          dropdownColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+                          items: const [
+                            DropdownMenuItem(value: 'CASH', child: Text('Cash')),
+                            DropdownMenuItem(value: 'UPI', child: Text('UPI')),
+                            DropdownMenuItem(value: 'QR_CODE', child: Text('QR Code')),
+                          ],
+                          onChanged: (val) => setDialogState(() => paymentMethod = val ?? 'CASH'),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: gold, foregroundColor: Colors.black),
+                  onPressed: isSaving ? null : submit,
+                  child: isSaving
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+                      : const Text('Create Booking'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
 // ── Empty state ────────────────────────────────────────────────────────────────

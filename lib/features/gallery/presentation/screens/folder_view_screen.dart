@@ -257,7 +257,7 @@ class _FolderViewScreenState extends ConsumerState<FolderViewScreen> {
 
     final galleryAsync = ref.watch(galleryDetailProvider(widget.id));
     final hasFullAccess = galleryAsync.maybeWhen(
-      data: (g) => isStudioOwner || (g.customerId == user?.id),
+      data: (g) => isStudioOwner || (g.customerId == user?.id) || (g.customer?.phone == user?.phone),
       orElse: () => false,
     );
 

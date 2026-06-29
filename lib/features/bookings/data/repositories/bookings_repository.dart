@@ -52,6 +52,10 @@ class BookingsRepository {
     required String planId,
     required String bookingDate,
     required String shootAddress,
+    String? customerName,
+    String? customerPhone,
+    bool? isPaid,
+    String? paymentMethod,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       ApiConstants.bookings,
@@ -59,6 +63,10 @@ class BookingsRepository {
         'planId': planId,
         'bookingDate': bookingDate,
         'shootAddress': shootAddress,
+        if (customerName != null) 'customerName': customerName,
+        if (customerPhone != null) 'customerPhone': customerPhone,
+        if (isPaid != null) 'isPaid': isPaid,
+        if (paymentMethod != null) 'paymentMethod': paymentMethod,
       },
     );
     return BookingModel.fromJson(response.data!);
@@ -76,10 +84,18 @@ class BookingsRepository {
   Future<BookingModel> updateBookingStatus({
     required String bookingId,
     required String status,
+    bool? isPaid,
+    bool? isFullPaid,
+    String? paymentMethod,
   }) async {
     final response = await _dio.patch<Map<String, dynamic>>(
       ApiConstants.bookingStatus(bookingId),
-      data: {'status': status},
+      data: {
+        'status': status,
+        if (isPaid != null) 'isPaid': isPaid,
+        if (isFullPaid != null) 'isFullPaid': isFullPaid,
+        if (paymentMethod != null) 'paymentMethod': paymentMethod,
+      },
     );
     return BookingModel.fromJson(response.data!);
   }
@@ -192,12 +208,24 @@ class BookingsListNotifier extends StateNotifier<AsyncValue<List<BookingModel>>>
     }
   }
 
-  Future<bool> createBooking(String planId, String bookingDate, String shootAddress) async {
+  Future<bool> createBooking(
+    String planId,
+    String bookingDate,
+    String shootAddress, {
+    String? customerName,
+    String? customerPhone,
+    bool? isPaid,
+    String? paymentMethod,
+  }) async {
     try {
       await _repository.createBooking(
         planId: planId,
         bookingDate: bookingDate,
         shootAddress: shootAddress,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        isPaid: isPaid,
+        paymentMethod: paymentMethod,
       );
       loadBookings();
       return true;
@@ -206,31 +234,23 @@ class BookingsListNotifier extends StateNotifier<AsyncValue<List<BookingModel>>>
     }
   }
 
-  Future<bool> updateBookingStatus(String bookingId, String status) async {
+  Future<bool> updateBookingStatus(
+    String bookingId,
+    String status, {
+    bool? isPaid,
+    bool? isFullPaid,
+    String? paymentMethod,
+  }) async {
     try {
-      await _repository.updateBookingStatus(bookingId: bookingId, status: status);
+      final updated = await _repository.updateBookingStatus(
+        bookingId: bookingId,
+        status: status,
+        isPaid: isPaid,
+        isFullPaid: isFullPaid,
+        paymentMethod: paymentMethod,
+      );
       state.whenData((bookings) {
-        state = AsyncValue.data(bookings.map((b) {
-          if (b.id == bookingId) {
-            return BookingModel(
-              id: b.id,
-              customerId: b.customerId,
-              studioOwnerId: b.studioOwnerId,
-              planId: b.planId,
-              bookingDate: b.bookingDate,
-              shootAddress: b.shootAddress,
-              totalPrice: b.totalPrice,
-              advancePaid: b.advancePaid,
-              status: status,
-              isPaid: b.isPaid,
-              createdAt: b.createdAt,
-              plan: b.plan,
-              customer: b.customer,
-              studioOwner: b.studioOwner,
-            );
-          }
-          return b;
-        }).toList());
+        state = AsyncValue.data(bookings.map((b) => b.id == bookingId ? updated : b).toList());
       });
       return true;
     } catch (_) {

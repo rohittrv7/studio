@@ -15,6 +15,9 @@ class MediaRepositoryImpl implements MediaRepository {
 
   final MediaRemoteDataSource _remote;
 
+  // In-memory cache for offline viewing support
+  static final Map<String, MediaFile> _mediaCache = {};
+
   // ---------------------------------------------------------------------------
   // getMedia
   // ---------------------------------------------------------------------------
@@ -33,8 +36,20 @@ class MediaRepositoryImpl implements MediaRepository {
         limit: limit,
         folderId: folderId,
       );
-      return models.map((m) => m.toEntity()).toList();
+      final entities = models.map((m) => m.toEntity()).toList();
+      for (final entity in entities) {
+        _mediaCache['$galleryId-${entity.id}'] = entity;
+      }
+      return entities;
     } on DioException catch (e) {
+      final galleryPrefix = '$galleryId-';
+      final cachedList = _mediaCache.entries
+          .where((entry) => entry.key.startsWith(galleryPrefix))
+          .map((entry) => entry.value)
+          .toList();
+      if (cachedList.isNotEmpty) {
+        return cachedList;
+      }
       throw _mapException(e);
     }
   }
@@ -45,11 +60,22 @@ class MediaRepositoryImpl implements MediaRepository {
 
   @override
   Future<MediaFile> getMediaFile(String galleryId, String mediaId) async {
+    final cacheKey = '$galleryId-$mediaId';
     try {
       final model = await _remote.getMediaFile(galleryId, mediaId);
-      return model.toEntity();
+      final entity = model.toEntity();
+      _mediaCache[cacheKey] = entity;
+      return entity;
     } on DioException catch (e) {
+      if (_mediaCache.containsKey(cacheKey)) {
+        return _mediaCache[cacheKey]!;
+      }
       throw _mapException(e);
+    } catch (e) {
+      if (_mediaCache.containsKey(cacheKey)) {
+        return _mediaCache[cacheKey]!;
+      }
+      rethrow;
     }
   }
 

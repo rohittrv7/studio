@@ -12,6 +12,7 @@ class BookingModel {
     required this.advancePaid,
     required this.status,
     required this.isPaid,
+    required this.isFullPaid,
     required this.createdAt,
     this.plan,
     this.customer,
@@ -31,6 +32,7 @@ class BookingModel {
   final double advancePaid;
   final String status; // PENDING, CONFIRMED, REJECTED, COMPLETED
   final bool isPaid;
+  final bool isFullPaid;
   final DateTime createdAt;
   final PlanModel? plan;
   final BookingClientModel? customer;
@@ -51,6 +53,7 @@ class BookingModel {
       advancePaid: (json['advancePaid'] as num).toDouble(),
       status: json['status'] as String,
       isPaid: json['isPaid'] as bool? ?? false,
+      isFullPaid: json['isFullPaid'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
       plan: json['plan'] != null ? PlanModel.fromJson(json['plan'] as Map<String, dynamic>) : null,
       customer: json['customer'] != null ? BookingClientModel.fromJson(json['customer'] as Map<String, dynamic>) : null,

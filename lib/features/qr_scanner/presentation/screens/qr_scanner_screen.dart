@@ -35,6 +35,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingOb
 
   Future<void> _startCamera() async {
     if (!_hasPermission || _isCameraStarted) return;
+    // Delay camera startup slightly to allow OS to release the hardware resource from any prior sessions
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    if (!mounted || _isCameraStarted) return;
     try {
       await _controller.start();
       if (mounted) {
