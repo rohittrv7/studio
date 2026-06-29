@@ -74,7 +74,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         final user = authState.user;
         final isNewUser = user.name == 'Studio Owner' || user.name == 'User';
 
-        if (authState is AuthAuthenticated && authState.pendingGalleryId != null) {
+        if (authState.pendingGalleryId != null) {
           return '/galleries/${authState.pendingGalleryId}';
         }
 

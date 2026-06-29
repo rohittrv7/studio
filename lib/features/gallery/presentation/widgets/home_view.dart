@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../bookings/data/repositories/bookings_repository.dart';
 import '../providers/gallery_provider.dart';
+import '../../../analytics/data/datasources/analytics_remote_data_source.dart';
 
 class HomeView extends ConsumerWidget {
   const HomeView({
@@ -28,11 +29,17 @@ class HomeView extends ConsumerWidget {
     final galleries = galleryState.value?.galleries ?? [];
     final isStudioOwner = user?.isStudioOwner ?? false;
     final bookingsAsync = ref.watch(bookingsListProvider);
+    final overviewAsync = isStudioOwner
+        ? ref.watch(studioOverviewAnalyticsProvider)
+        : null;
     const gold = Color(0xFFE8B86D);
 
     return RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(galleryListProvider);
+            if (isStudioOwner) {
+              ref.invalidate(studioOverviewAnalyticsProvider);
+            }
             await ref.read(galleryListProvider.notifier).refresh();
           },
           color: gold,
@@ -106,7 +113,56 @@ class HomeView extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 16),
+
+                if (isStudioOwner && overviewAsync != null) ...[
+                  overviewAsync.when(
+                    loading: () => const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(color: gold, strokeWidth: 1.5),
+                        ),
+                      ),
+                    ),
+                    error: (err, _) => Center(
+                      child: Text(
+                        'Stats Error: $err',
+                        style: const TextStyle(color: Colors.redAccent, fontSize: 11),
+                      ),
+                    ),
+                    data: (stats) {
+                      final views = stats['totalViews'] ?? 0;
+                      final downloads = stats['totalDownloads'] ?? 0;
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: _buildStatCard(
+                              context,
+                              title: 'Total Views',
+                              value: '$views',
+                              icon: Icons.remove_red_eye_outlined,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildStatCard(
+                              context,
+                              title: 'Total Downloads',
+                              value: '$downloads',
+                              icon: Icons.download_outlined,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 28),
+                ] else ...[
+                  const SizedBox(height: 28),
+                ],
 
                 // ── Quick Actions ──────────────────────────────────────────────
                 const Text(

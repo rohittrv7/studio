@@ -22,6 +22,9 @@ abstract class AnalyticsRemoteDataSource {
 
   /// Fetches aggregated analytics for a gallery.
   Future<Map<String, dynamic>> getGalleryAnalytics(String galleryId);
+
+  /// Fetches overall studio analytics overview.
+  Future<Map<String, dynamic>> getOverviewAnalytics();
 }
 
 // ---------------------------------------------------------------------------
@@ -67,6 +70,14 @@ class AnalyticsRemoteDataSourceImpl implements AnalyticsRemoteDataSource {
     );
     return response.data!;
   }
+
+  @override
+  Future<Map<String, dynamic>> getOverviewAnalytics() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/analytics/overview',
+    );
+    return response.data!;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -83,4 +94,9 @@ final analyticsRemoteDataSourceProvider =
 /// Riverpod provider to fetch gallery analytics.
 final galleryAnalyticsProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, galleryId) async {
   return ref.watch(analyticsRemoteDataSourceProvider).getGalleryAnalytics(galleryId);
+});
+
+/// Riverpod provider to fetch overall studio overview analytics.
+final studioOverviewAnalyticsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  return ref.watch(analyticsRemoteDataSourceProvider).getOverviewAnalytics();
 });

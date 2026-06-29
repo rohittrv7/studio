@@ -201,10 +201,10 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
               final mediaAsync = ref.watch(
                 mediaFileProvider((widget.galleryId, mediaId)),
               );
-              final permitted = mediaAsync.whenOrNull(
+              final permitted = isStudioOwner || (mediaAsync.whenOrNull(
                     data: (file) => file.downloadPermitted,
                   ) ??
-                  false;
+                  false);
 
               if (!permitted) return const SizedBox.shrink();
               return IconButton(
@@ -238,19 +238,73 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
             },
           ),
           Expanded(
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: total,
-              onPageChanged: (index) => _currentIndex.value = index,
-              itemBuilder: (context, index) {
-                final mediaId = widget.mediaIds[index];
-                return _PhotoPage(
-                  galleryId: widget.galleryId,
-                  mediaId: mediaId,
-                  onFavoriteTap: _toggleFavorite,
-                  hasFullAccess: hasFullAccess,
-                );
-              },
+            child: Stack(
+              children: [
+                PageView.builder(
+                  controller: _pageController,
+                  itemCount: total,
+                  onPageChanged: (index) => _currentIndex.value = index,
+                  itemBuilder: (context, index) {
+                    final mediaId = widget.mediaIds[index];
+                    return _PhotoPage(
+                      galleryId: widget.galleryId,
+                      mediaId: mediaId,
+                      onFavoriteTap: _toggleFavorite,
+                      hasFullAccess: hasFullAccess,
+                    );
+                  },
+                ),
+                Positioned(
+                  bottom: 20,
+                  left: 24,
+                  right: 24,
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: _currentIndex,
+                    builder: (context, index, _) {
+                      final mediaId = widget.mediaIds[index];
+                      final mediaAsync = ref.watch(mediaFileProvider((widget.galleryId, mediaId)));
+                      return mediaAsync.maybeWhen(
+                        data: (file) {
+                          final allowed = isStudioOwner || file.downloadPermitted;
+                          return Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.75),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: allowed ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    allowed ? Icons.check_circle_outline_rounded : Icons.lock_outline_rounded,
+                                    color: allowed ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                    size: 14,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    allowed ? 'Download Enabled' : 'Download Disabled by Studio',
+                                    style: TextStyle(
+                                      color: allowed ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                        orElse: () => const SizedBox.shrink(),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -319,7 +373,7 @@ class _PhotoPage extends ConsumerWidget {
 // Loaded photo content
 // ---------------------------------------------------------------------------
 
-class _PhotoPageContent extends StatelessWidget {
+class _PhotoPageContent extends StatefulWidget {
   const _PhotoPageContent({
     required this.mediaFile,
     required this.isFavorite,
@@ -333,46 +387,67 @@ class _PhotoPageContent extends StatelessWidget {
   final bool hasFullAccess;
 
   @override
+  State<_PhotoPageContent> createState() => _PhotoPageContentState();
+}
+
+class _PhotoPageContentState extends State<_PhotoPageContent> {
+  final TransformationController _transformationController = TransformationController();
+  TapDownDetails? _doubleTapDetails;
+
+  void _handleDoubleTap() {
+    if (_transformationController.value != Matrix4.identity()) {
+      _transformationController.value = Matrix4.identity();
+    } else {
+      final position = _doubleTapDetails!.localPosition;
+      _transformationController.value = Matrix4.identity()
+        ..translate(-position.dx * 2, -position.dy * 2)
+        ..scale(3.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // ------------------------------------------------------------------
-        // Zoomable full-res image
-        // ------------------------------------------------------------------
         Center(
-          child: InteractiveViewer(
-            maxScale: 4.0,
-            child: CachedNetworkImage(
-              imageUrl: mediaFile.secureUrl,
-              // While the full-res image loads, show the already-cached
-              // thumbnail so there is no blank flash.
-              placeholder: (context, url) => CachedNetworkImage(
-                imageUrl: mediaFile.thumbnailUrl,
-                fit: BoxFit.contain,
-                errorWidget: (context, url, error) => const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
+          child: GestureDetector(
+            onDoubleTapDown: (details) => _doubleTapDetails = details,
+            onDoubleTap: _handleDoubleTap,
+            child: InteractiveViewer(
+              transformationController: _transformationController,
+              maxScale: 4.0,
+              child: CachedNetworkImage(
+                imageUrl: widget.mediaFile.secureUrl,
+                placeholder: (context, url) => CachedNetworkImage(
+                  imageUrl: widget.mediaFile.thumbnailUrl,
+                  fit: BoxFit.contain,
+                  errorWidget: (context, url, error) => const Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  ),
                 ),
+                errorWidget: (context, url, error) => const Center(
+                  child: Icon(Icons.broken_image, color: Colors.white54, size: 64),
+                ),
+                fit: BoxFit.contain,
               ),
-              errorWidget: (context, url, error) => const Center(
-                child: Icon(Icons.broken_image, color: Colors.white54, size: 64),
-              ),
-              fit: BoxFit.contain,
             ),
           ),
         ),
-
-        // ------------------------------------------------------------------
-        // Favorite heart overlay — bottom-right corner
-        // ------------------------------------------------------------------
-        if (hasFullAccess)
+        if (widget.hasFullAccess)
           Positioned(
             right: 16,
-            bottom: 24,
+            bottom: 30, // Pushed up slightly to clear the downloads overlay banner
             child: GestureDetector(
-              onTap: onFavoriteTap,
+              onTap: widget.onFavoriteTap,
               child: Icon(
-                isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: isFavorite ? Colors.red : Colors.white,
+                widget.isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: widget.isFavorite ? Colors.red : Colors.white,
                 size: 32,
                 shadows: const [
                   Shadow(color: Colors.black54, blurRadius: 8),

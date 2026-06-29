@@ -113,92 +113,6 @@ class StudioProfileScreen extends ConsumerWidget {
                   const SizedBox(height: 28),
                 ],
 
-                // ── Demo Gallery Section ─────────────────────────────────────
-                Text(
-                  'Demo Photos & Videos',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (studio.demoMedia.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 36),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? const Color(0xFF161616)
-                          : const Color(0xFFF7F7F7),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? const Color(0xFF2E2E2E)
-                            : const Color(0xFFE5E5E5),
-                      ),
-                    ),
-                    child: const Center(
-                      child: Column(
-                        children: [
-                          Icon(Icons.photo_library_outlined, color: Colors.grey, size: 36),
-                          SizedBox(height: 8),
-                          Text(
-                            'No demo media uploaded by owner.',
-                            style: TextStyle(color: Colors.grey, fontSize: 12),
-                          ),
-                          Text(
-                            '(Note: Upload folder name must match Studio Name)',
-                            style: TextStyle(color: Colors.grey, fontSize: 10),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                    ),
-                    itemCount: studio.demoMedia.length,
-                    itemBuilder: (context, idx) {
-                      final media = studio.demoMedia[idx];
-                      final isVideo = media.mediaType == 'VIDEO';
-                      return GestureDetector(
-                        onTap: () {
-                          // Simple modal viewer for photo or video
-                          _showMediaViewer(context, media);
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? const Color(0xFF1E1E1E)
-                                : const Color(0xFFEEEEEE),
-                            borderRadius: BorderRadius.circular(8),
-                            image: DecorationImage(
-                              image: NetworkImage(media.thumbnailUrl),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          child: isVideo
-                              ? const Center(
-                                  child: CircleAvatar(
-                                    backgroundColor: Colors.black54,
-                                    radius: 18,
-                                    child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
-                                  ),
-                                )
-                              : null,
-                        ),
-                      );
-                    },
-                  ),
-
-                const SizedBox(height: 32),
 
                 // ── Showcase Projects Section ────────────────────────────────
                 if (studio.showcaseGalleries.isNotEmpty) ...[
@@ -424,42 +338,6 @@ class StudioProfileScreen extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
-
-  void _showMediaViewer(BuildContext context, DemoMediaModel media) {
-    showDialog<void>(
-      context: context,
-      builder: (context) {
-        return GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Scaffold(
-            backgroundColor: Colors.black,
-            appBar: AppBar(
-              backgroundColor: Colors.black,
-              leading: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-            body: Center(
-              child: Hero(
-                tag: media.id,
-                child: media.mediaType == 'VIDEO'
-                    ? const Center(
-                        child: Text(
-                          'Video playback is supported on booking confirmation.',
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                      )
-                    : InteractiveViewer(
-                        child: Image.network(media.secureUrl, fit: BoxFit.contain),
-                      ),
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -860,15 +738,11 @@ class StudioProfileScreen extends ConsumerWidget {
                         onTap: () {
                           showDialog<void>(
                             context: context,
-                            builder: (c) => GestureDetector(
-                              onTap: () => Navigator.pop(c),
-                              child: Container(
-                                color: Colors.black,
-                                child: Center(
-                                  child: Image.network(media.secureUrl, fit: BoxFit.contain),
-                                ),
-                              ),
-                            ),
+                            builder: (c) {
+                              return _ShowcasePhotoViewer(
+                                imageUrl: media.secureUrl,
+                              );
+                            },
                           );
                         },
                         child: ClipRRect(
@@ -888,6 +762,72 @@ class StudioProfileScreen extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _ShowcasePhotoViewer extends StatefulWidget {
+  const _ShowcasePhotoViewer({required this.imageUrl});
+  final String imageUrl;
+
+  @override
+  State<_ShowcasePhotoViewer> createState() => _ShowcasePhotoViewerState();
+}
+
+class _ShowcasePhotoViewerState extends State<_ShowcasePhotoViewer> {
+  final TransformationController _transformationController = TransformationController();
+  TapDownDetails? _doubleTapDetails;
+
+  void _handleDoubleTap() {
+    if (_transformationController.value != Matrix4.identity()) {
+      _transformationController.value = Matrix4.identity();
+    } else {
+      final position = _doubleTapDetails!.localPosition;
+      _transformationController.value = Matrix4.identity()
+        ..translate(-position.dx * 2, -position.dy * 2)
+        ..scale(3.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.pop(context),
+      child: Container(
+        color: Colors.black,
+        child: Stack(
+          children: [
+            Center(
+              child: GestureDetector(
+                onDoubleTapDown: (details) => _doubleTapDetails = details,
+                onDoubleTap: _handleDoubleTap,
+                child: InteractiveViewer(
+                  transformationController: _transformationController,
+                  maxScale: 4.0,
+                  child: Image.network(widget.imageUrl, fit: BoxFit.contain),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: Material(
+                color: Colors.transparent,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -24,12 +24,41 @@ class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingOb
 
   /// Prevents multiple simultaneous detections from being processed.
   bool _isProcessing = false;
+  bool _isCameraStarted = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkPermission();
+  }
+
+  Future<void> _startCamera() async {
+    if (!_hasPermission || _isCameraStarted) return;
+    try {
+      await _controller.start();
+      if (mounted) {
+        setState(() {
+          _isCameraStarted = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to start camera: $e');
+    }
+  }
+
+  Future<void> _stopCamera() async {
+    if (!_isCameraStarted) return;
+    try {
+      await _controller.stop();
+      if (mounted) {
+        setState(() {
+          _isCameraStarted = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to stop camera: $e');
+    }
   }
 
   void _onPermissionGranted() {
@@ -40,12 +69,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingOb
       });
       // Delay starting the camera slightly to ensure the widget tree is fully mounted
       Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted && _hasPermission) {
-          try {
-            _controller.start();
-          } catch (e) {
-            debugPrint('Failed to start camera after permission granted: $e');
-          }
+        if (mounted) {
+          _startCamera();
         }
       });
     }
@@ -138,11 +163,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingOb
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    try {
-      _controller.stop();
-    } catch (e) {
-      debugPrint('Error stopping camera in dispose: $e');
-    }
+    _stopCamera();
     _controller.dispose();
     super.dispose();
   }
@@ -152,22 +173,12 @@ class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingOb
     if (state == AppLifecycleState.resumed) {
       _checkPermission(isLifecycleCheck: true);
       if (_hasPermission) {
-        try {
-          _controller.start();
-        } catch (e) {
-          debugPrint('Error starting camera on resume: $e');
-        }
+        _startCamera();
       }
     } else if (state == AppLifecycleState.inactive ||
                state == AppLifecycleState.paused ||
                state == AppLifecycleState.detached) {
-      if (_hasPermission) {
-        try {
-          _controller.stop();
-        } catch (e) {
-          debugPrint('Error stopping camera on pause: $e');
-        }
-      }
+      _stopCamera();
     }
   }
 
@@ -380,11 +391,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingOb
                             ),
                           ),
                           onPressed: () async {
-                            try {
-                              await _controller.start();
-                            } catch (e) {
-                              debugPrint('Failed to start camera on retry: $e');
-                            }
+                            _startCamera();
                           },
                           icon: const Icon(Icons.refresh_rounded, size: 18),
                           label: const Text('Retry'),

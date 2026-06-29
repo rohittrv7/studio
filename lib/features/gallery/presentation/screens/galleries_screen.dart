@@ -41,9 +41,6 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
     _currentIndex = widget.initialTab ?? 0;
   }
 
-  List<Widget>? _ownerTabs;
-  List<Widget>? _customerTabs;
-
   Widget _buildErrorWidget(Object error) {
     return ErrorDisplay(
       title: 'Failed to Load Galleries',
@@ -62,22 +59,14 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
       }
     });
 
-    ref.listen(authNotifierProvider, (prev, next) {
-      if (prev != next) {
-        setState(() {
-          _ownerTabs = null;
-          _customerTabs = null;
-        });
-      }
-    });
-
     final authState = ref.watch(authNotifierProvider);
     final user = authState is AuthAuthenticated ? authState.user : null;
     final isStudio = user?.isStudioOwner ?? false;
     const gold = Color(0xFFE8B86D);
 
+    final List<Widget> tabs;
     if (isStudio) {
-      _ownerTabs ??= [
+      tabs = [
         HomeView(
           onCreateGallery: () => _showCreateGalleryDialog(),
           onCreateFolder: () => _showCreateFolderFromOutsideDialog(),
@@ -104,7 +93,7 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
         ),
       ];
     } else {
-      _customerTabs ??= [
+      tabs = [
         HomeView(
           onCreateGallery: () => _showCreateGalleryDialog(),
           onCreateFolder: () => _showCreateFolderFromOutsideDialog(),
@@ -132,8 +121,6 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
         ),
       ];
     }
-
-    final List<Widget> tabs = isStudio ? _ownerTabs! : _customerTabs!;
     final List<BottomNavigationBarItem> navItems = [];
     final List<String> titles = [];
 
@@ -209,7 +196,6 @@ class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
       _currentIndex = 0;
     }
 
-    final activeBody = tabs[_currentIndex];
     final title = titles[_currentIndex];
     final showGridListToggle = (isStudio && _currentIndex == 1) || (!isStudio && _currentIndex == 3);
     final showRefreshButton = (_currentIndex == 2);
