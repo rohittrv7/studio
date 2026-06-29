@@ -93,38 +93,18 @@ class BookingsRepository {
     return BookingModel.fromJson(response.data!);
   }
 
-  Future<Map<String, dynamic>> createPaymentOrder(String bookingId) async {
-    final response = await _dio.post<Map<String, dynamic>>(
-      '${ApiConstants.bookings}/$bookingId/payment-order',
-    );
-    return response.data!;
-  }
-
-  Future<BookingModel> verifyPayment({
-    required String bookingId,
-    required String razorpayPaymentId,
-    required String razorpaySignature,
-  }) async {
-    final response = await _dio.post<Map<String, dynamic>>(
-      '${ApiConstants.bookings}/$bookingId/verify-payment',
-      data: {
-        'razorpayPaymentId': razorpayPaymentId,
-        'razorpaySignature': razorpaySignature,
-      },
-    );
-    return BookingModel.fromJson(response.data!);
-  }
-
   Future<BookingModel> submitManualPayment({
     required String bookingId,
     required String transactionRef,
     String? paymentScreenshot,
+    String? paymentMethod,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '${ApiConstants.bookings}/$bookingId/submit-payment',
       data: {
         'transactionRef': transactionRef,
         if (paymentScreenshot != null) 'paymentScreenshot': paymentScreenshot,
+        if (paymentMethod != null) 'paymentMethod': paymentMethod,
       },
     );
     return BookingModel.fromJson(response.data!);
@@ -270,32 +250,18 @@ class BookingsListNotifier extends StateNotifier<AsyncValue<List<BookingModel>>>
     }
   }
 
-  Future<bool> verifyPayment(String bookingId, String paymentId, String signature) async {
-    try {
-      final updated = await _repository.verifyPayment(
-        bookingId: bookingId,
-        razorpayPaymentId: paymentId,
-        razorpaySignature: signature,
-      );
-      state.whenData((bookings) {
-        state = AsyncValue.data(bookings.map((b) => b.id == bookingId ? updated : b).toList());
-      });
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
   Future<bool> submitManualPayment({
     required String bookingId,
     required String transactionRef,
     String? paymentScreenshot,
+    String? paymentMethod,
   }) async {
     try {
       final updated = await _repository.submitManualPayment(
         bookingId: bookingId,
         transactionRef: transactionRef,
         paymentScreenshot: paymentScreenshot,
+        paymentMethod: paymentMethod,
       );
       state.whenData((bookings) {
         state = AsyncValue.data(bookings.map((b) => b.id == bookingId ? updated : b).toList());

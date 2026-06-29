@@ -18,6 +18,7 @@ class BookingModel {
     this.studioOwner,
     this.paymentScreenshot,
     this.transactionRef,
+    this.paymentMethod,
   });
 
   final String id;
@@ -36,6 +37,7 @@ class BookingModel {
   final BookingStudioModel? studioOwner;
   final String? paymentScreenshot;
   final String? transactionRef;
+  final String? paymentMethod;
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
     return BookingModel(
@@ -55,6 +57,7 @@ class BookingModel {
       studioOwner: json['studioOwner'] != null ? BookingStudioModel.fromJson(json['studioOwner'] as Map<String, dynamic>) : null,
       paymentScreenshot: json['paymentScreenshot'] as String?,
       transactionRef: json['transactionRef'] as String?,
+      paymentMethod: json['paymentMethod'] as String?,
     );
   }
 

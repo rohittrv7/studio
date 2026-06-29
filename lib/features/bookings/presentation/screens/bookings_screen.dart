@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/repositories/bookings_repository.dart';
 import '../../data/models/booking_model.dart';
@@ -17,149 +16,21 @@ class BookingsScreen extends ConsumerStatefulWidget {
 }
 
 class _BookingsScreenState extends ConsumerState<BookingsScreen> {
-  late Razorpay _razorpay;
-  BookingModel? _activePaymentBooking;
-
   @override
   void initState() {
     super.initState();
-    _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
   }
 
   @override
   void dispose() {
-    _razorpay.clear();
     super.dispose();
   }
 
-  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
-    final booking = _activePaymentBooking;
-    if (booking == null) return;
-
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-    // Show loading overlay
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFFE8B86D))),
-    );
-
-    final success = await ref.read(bookingsListProvider.notifier).verifyPayment(
-      booking.id,
-      response.paymentId ?? '',
-      response.signature ?? '',
-    );
-
-    if (mounted) {
-      Navigator.of(context).pop(); // Close loader
-    }
-
-    if (success) {
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('Payment Successful! Booking confirmed.')),
-      );
-    } else {
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('Payment verification failed. Please try again.')),
-      );
-    }
-
-    setState(() {
-      _activePaymentBooking = null;
-    });
-  }
-
-  void _handlePaymentError(PaymentFailureResponse response) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Payment Failed: ${response.message ?? 'Unknown error'}')),
-      );
-    }
-    setState(() {
-      _activePaymentBooking = null;
-    });
-  }
-
-  void _handleExternalWallet(ExternalWalletResponse response) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('External Wallet Selected: ${response.walletName}')),
-      );
-    }
-    setState(() {
-      _activePaymentBooking = null;
-    });
-  }
-
-  Future<void> _startRazorpayPayment(BookingModel booking) async {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-    // Show loading overlay while creating order
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFFE8B86D))),
-    );
-
-    try {
-      final orderData = await ref.read(bookingsRepositoryProvider).createPaymentOrder(booking.id);
-      
-      if (mounted) {
-        Navigator.of(context).pop(); // Close loader
-      }
-
-      final String orderId = orderData['orderId'];
-      final String keyId = orderData['keyId'];
-      final int amount = orderData['amount'];
-
-      setState(() {
-        _activePaymentBooking = booking;
-      });
-
-      final authState = ref.read(authNotifierProvider);
-      final user = authState is AuthAuthenticated ? authState.user : null;
-
-      var options = {
-        'key': keyId,
-        'amount': amount,
-        'name': booking.studioOwner?.studioName ?? 'Studio Gallery',
-        'order_id': orderId,
-        'description': 'Photoshoot booking advance payment',
-        'prefill': {
-          'contact': user?.phone ?? '',
-          'email': user?.email ?? '',
-        },
-        'theme': {
-          'color': '#E8B86D',
-        }
-      };
-
-      _razorpay.open(options);
-    } catch (e) {
-      if (mounted) {
-        Navigator.of(context).pop(); // Close loader
-        scaffoldMessenger.showSnackBar(
-          SnackBar(content: Text('Failed to initiate payment: $e')),
-        );
-      }
-    }
-  }
-
   void _payBooking(BookingModel booking) {
-    final upiId = booking.studioOwner?.upiId;
-    final hasUpi = upiId != null && upiId.isNotEmpty;
-    if (hasUpi) {
-      _showUpiPaymentSheet(booking);
-    } else {
-      _startRazorpayPayment(booking);
-    }
+    _showPaymentSheet(booking);
   }
 
-  void _showUpiPaymentSheet(BookingModel booking) {
+  void _showPaymentSheet(BookingModel booking) {
     final upiId = booking.studioOwner?.upiId ?? '';
     final qr = booking.studioOwner?.upiQrCode;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -168,6 +39,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     File? receiptFile;
     String? receiptBase64;
     final utrController = TextEditingController();
+    String selectedMethod = 'UPI'; // 'CASH', 'UPI', 'QR_CODE'
     bool isSubmitting = false;
 
     showModalBottomSheet<void>(
@@ -200,18 +72,21 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
             }
 
             Future<void> submit() async {
-              final utr = utrController.text.trim();
-              if (utr.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter the Transaction ID / UTR')),
-                );
-                return;
-              }
-              if (receiptBase64 == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please upload a screenshot of the payment receipt')),
-                );
-                return;
+              final utr = selectedMethod == 'CASH' ? 'CASH' : utrController.text.trim();
+              
+              if (selectedMethod != 'CASH') {
+                if (utr.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter the Transaction ID / UTR')),
+                  );
+                  return;
+                }
+                if (receiptBase64 == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please upload a screenshot of the payment receipt')),
+                  );
+                  return;
+                }
               }
 
               setSheetState(() {
@@ -221,7 +96,8 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
               final success = await ref.read(bookingsListProvider.notifier).submitManualPayment(
                 bookingId: booking.id,
                 transactionRef: utr,
-                paymentScreenshot: receiptBase64,
+                paymentScreenshot: selectedMethod == 'CASH' ? null : receiptBase64,
+                paymentMethod: selectedMethod,
               );
 
               if (mounted) {
@@ -232,7 +108,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Payment details submitted successfully! Owner will verify.')),
                   );
-                  Navigator.pop(context); // Close UPI sheet
+                  Navigator.pop(context); // Close sheet
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Failed to submit payment details. Please try again.')),
@@ -260,7 +136,6 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Handle bar
                     Center(
                       child: Container(
                         width: 40,
@@ -273,7 +148,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                       ),
                     ),
                     Text(
-                      'Pay Studio via UPI',
+                      'Pay Studio Advance',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 20,
@@ -282,151 +157,246 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Transfer the advance amount of ₹${booking.advancePaid.toStringAsFixed(0)} to the UPI ID or QR code below, then upload the receipt screenshot.',
+                      'Select your preferred payment method for the advance amount of ₹${booking.advancePaid.toStringAsFixed(0)}.',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 13,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
-                    // UPI ID
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFF7F7F7),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: isDark ? const Color(0xFF3E3E3E) : const Color(0xFFE5E5E5)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'STUDIO UPI ID',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                upiId,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.copy_rounded, color: gold),
-                            onPressed: () {
-                              Clipboard.setData(ClipboardData(text: upiId));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('UPI ID copied to clipboard!'), duration: Duration(seconds: 1)),
-                              );
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ChoiceChip(
+                            label: const Center(child: Text('UPI ID')),
+                            selected: selectedMethod == 'UPI',
+                            selectedColor: gold,
+                            labelStyle: TextStyle(
+                              color: selectedMethod == 'UPI' ? Colors.black : Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                            onSelected: (selected) {
+                              if (selected) setSheetState(() => selectedMethod = 'UPI');
                             },
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ChoiceChip(
+                            label: const Center(child: Text('QR Code')),
+                            selected: selectedMethod == 'QR_CODE',
+                            selectedColor: gold,
+                            labelStyle: TextStyle(
+                              color: selectedMethod == 'QR_CODE' ? Colors.black : Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                            onSelected: (selected) {
+                              if (selected) setSheetState(() => selectedMethod = 'QR_CODE');
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ChoiceChip(
+                            label: const Center(child: Text('Cash')),
+                            selected: selectedMethod == 'CASH',
+                            selectedColor: gold,
+                            labelStyle: TextStyle(
+                              color: selectedMethod == 'CASH' ? Colors.black : Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                            onSelected: (selected) {
+                              if (selected) setSheetState(() => selectedMethod = 'CASH');
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 20),
 
-                    // QR Code
-                    if (qr != null && qr.isNotEmpty) ...[
-                      Center(
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
+                    if (selectedMethod == 'CASH') ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFF7F7F7),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: isDark ? const Color(0xFF3E3E3E) : const Color(0xFFE5E5E5)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.info_outline_rounded, color: gold),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'You can pay cash directly at the studio. Click submit to log your Cash payment request.',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ] else if (selectedMethod == 'UPI') ...[
+                      if (upiId.isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.grey.shade300, width: 2),
+                            color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFF7F7F7),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: isDark ? const Color(0xFF3E3E3E) : const Color(0xFFE5E5E5)),
                           ),
-                          child: qr.startsWith('data:image/') && qr.contains('base64,')
-                              ? Image.memory(
-                                  base64Decode(qr.split('base64,').last),
-                                  width: 180,
-                                  height: 180,
-                                  fit: BoxFit.contain,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'STUDIO UPI ID',
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    upiId,
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.copy_rounded, color: gold),
+                                onPressed: () {
+                                  Clipboard.setData(ClipboardData(text: upiId));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('UPI ID copied to clipboard!'), duration: Duration(seconds: 1)),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ] else ...[
+                        Center(
+                          child: Text(
+                            'UPI ID is not configured by the studio.',
+                            style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    ] else if (selectedMethod == 'QR_CODE') ...[
+                      if (qr != null && qr.isNotEmpty) ...[
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.grey.shade300, width: 2),
+                            ),
+                            child: qr.startsWith('data:image/') && qr.contains('base64,')
+                                ? Image.memory(
+                                    base64Decode(qr.split('base64,').last),
+                                    width: 180,
+                                    height: 180,
+                                    fit: BoxFit.contain,
+                                  )
+                                : Image.network(
+                                    qr,
+                                    width: 180,
+                                    height: 180,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (c, e, s) => const Icon(Icons.qr_code_rounded, size: 100, color: Colors.black),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ] else ...[
+                        Center(
+                          child: Text(
+                            'QR Code is not configured by the studio.',
+                            style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    ],
+
+                    if (selectedMethod != 'CASH') ...[
+                      GestureDetector(
+                        onTap: pickReceipt,
+                        child: Container(
+                          width: double.infinity,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFF7F7F7),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: receiptFile != null ? gold : (isDark ? const Color(0xFF3E3E3E) : const Color(0xFFE5E5E5)),
+                              style: BorderStyle.solid,
+                            ),
+                          ),
+                          child: receiptFile != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.file(
+                                    receiptFile!,
+                                    width: double.infinity,
+                                    height: 140,
+                                    fit: BoxFit.cover,
+                                  ),
                                 )
-                              : Image.network(
-                                  qr,
-                                  width: 180,
-                                  height: 180,
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (c, e, s) => const Icon(Icons.qr_code_rounded, size: 100, color: Colors.black),
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.add_photo_alternate_outlined, color: gold, size: 36),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Upload Payment Receipt Screenshot',
+                                      style: TextStyle(
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Select screenshot image from gallery',
+                                      style: TextStyle(color: Colors.grey, fontSize: 11),
+                                    ),
+                                  ],
                                 ),
                         ),
                       ),
                       const SizedBox(height: 20),
+
+                      TextFormField(
+                        controller: utrController,
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                        decoration: const InputDecoration(
+                          labelText: 'Transaction ID / UTR Number',
+                          hintText: 'Enter 12-digit transaction ID or reference',
+                          prefixIcon: Icon(Icons.receipt_long_outlined, color: gold),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
                     ],
 
-                    // Image Upload Selector
-                    GestureDetector(
-                      onTap: pickReceipt,
-                      child: Container(
-                        width: double.infinity,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFF7F7F7),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: receiptFile != null ? gold : (isDark ? const Color(0xFF3E3E3E) : const Color(0xFFE5E5E5)),
-                            style: BorderStyle.solid,
-                          ),
-                        ),
-                        child: receiptFile != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.file(
-                                  receiptFile!,
-                                  width: double.infinity,
-                                  height: 140,
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.add_photo_alternate_outlined, color: gold, size: 36),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Upload Payment Receipt Screenshot',
-                                    style: TextStyle(
-                                      color: Theme.of(context).colorScheme.onSurface,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  const Text(
-                                    'Select screenshot image from gallery',
-                                    style: TextStyle(color: Colors.grey, fontSize: 11),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Transaction UTR ID Input
-                    TextFormField(
-                      controller: utrController,
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                      decoration: const InputDecoration(
-                        labelText: 'Transaction ID / UTR Number',
-                        hintText: 'Enter 12-digit transaction ID or reference',
-                        prefixIcon: Icon(Icons.receipt_long_outlined, color: gold),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-
-                    // Submit Button
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -439,9 +409,9 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                         onPressed: isSubmitting ? null : submit,
                         child: isSubmitting
                             ? const CircularProgressIndicator(color: Colors.black)
-                            : const Text(
-                                'Submit Payment Reference',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            : Text(
+                                selectedMethod == 'CASH' ? 'Log Cash Payment' : 'Submit Payment Reference',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                               ),
                       ),
                     ),
@@ -643,6 +613,34 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                 ),
               ],
             ),
+            Divider(
+              color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE5E5E5),
+              height: 20,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  booking.customer?.phone.startsWith('offline_') == true
+                      ? 'Source: Direct (Studio)'
+                      : 'Source: Online Booking',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (booking.paymentMethod != null)
+                  Text(
+                    'Method: ${booking.paymentMethod}',
+                    style: const TextStyle(
+                      color: gold,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+              ],
+            ),
 
             // ── Actions (for Studio Owners on PENDING bookings) ─────────────────
             if (isStudio && booking.status == 'PENDING') ...[
@@ -688,7 +686,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   minimumSize: const Size(double.infinity, 44),
                 ),
-                onPressed: () => _startRazorpayPayment(booking),
+                onPressed: () => _payBooking(booking),
                 child: const Text('Pay Advance (25%)'),
               ),
             ],
@@ -775,10 +773,30 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
               _buildDetailItem(
                 context, 
                 isStudio ? 'Customer Phone' : 'Studio Phone', 
-                isStudio ? (booking.customer?.phone ?? 'N/A') : (booking.studioOwner?.phone ?? 'N/A'),
+                isStudio 
+                    ? (booking.customer?.phone.startsWith('offline_') == true ? 'N/A (Offline Client)' : booking.customer?.phone ?? 'N/A') 
+                    : (booking.studioOwner?.phone ?? 'N/A'),
                 Icons.phone_outlined,
               ),
               const SizedBox(height: 16),
+              _buildDetailItem(
+                context, 
+                'Booking Type', 
+                booking.customer?.phone.startsWith('offline_') == true
+                    ? 'Direct Booking (Offline Client)'
+                    : 'Online Booking',
+                Icons.info_outline,
+              ),
+              const SizedBox(height: 16),
+              if (booking.paymentMethod != null) ...[
+                _buildDetailItem(
+                  context, 
+                  'Payment Method', 
+                  booking.paymentMethod!,
+                  Icons.payment_outlined,
+                ),
+                const SizedBox(height: 16),
+              ],
               
               _buildDetailItem(
                 context, 

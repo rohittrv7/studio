@@ -118,7 +118,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/galleries',
-        builder: (context, state) => const GalleriesScreen(),
+        builder: (context, state) {
+          final tabStr = state.uri.queryParameters['tab'];
+          final initialTab = tabStr != null ? int.tryParse(tabStr) : null;
+          return GalleriesScreen(initialTab: initialTab);
+        },
       ),
       GoRoute(
         path: '/galleries/:id',

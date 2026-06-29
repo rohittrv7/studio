@@ -664,6 +664,7 @@ class _AssignCustomerDialogState extends ConsumerState<_AssignCustomerDialog> {
   final _phoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool? _downloadEnabled;
 
   @override
   void dispose() {
@@ -676,6 +677,12 @@ class _AssignCustomerDialogState extends ConsumerState<_AssignCustomerDialog> {
   Widget build(BuildContext context) {
     const gold = Color(0xFFE8B86D);
     final customersAsync = ref.watch(customersListProvider);
+    final detailAsync = ref.watch(galleryDetailProvider(widget.galleryId));
+    final currentDownloadEnabled = detailAsync.maybeWhen(
+      data: (g) => g.downloadEnabled,
+      orElse: () => true,
+    );
+    _downloadEnabled ??= currentDownloadEnabled;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return AlertDialog(
@@ -760,6 +767,15 @@ class _AssignCustomerDialogState extends ConsumerState<_AssignCustomerDialog> {
               return null;
             },
           ),
+          const SizedBox(height: 16),
+          CheckboxListTile(
+            title: Text('Allow Client to Download Photos', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13)),
+            value: _downloadEnabled ?? true,
+            onChanged: (val) => setState(() => _downloadEnabled = val),
+            activeColor: const Color(0xFFE8B86D),
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+          ),
         ],
       ),
     );
@@ -780,6 +796,15 @@ class _AssignCustomerDialogState extends ConsumerState<_AssignCustomerDialog> {
             focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: gold)),
           ),
           onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
+        ),
+        const SizedBox(height: 8),
+        CheckboxListTile(
+          title: Text('Allow Client to Download Photos', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13)),
+          value: _downloadEnabled ?? true,
+          onChanged: (val) => setState(() => _downloadEnabled = val),
+          activeColor: gold,
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
         ),
         const SizedBox(height: 12),
         Flexible(
@@ -837,6 +862,7 @@ class _AssignCustomerDialogState extends ConsumerState<_AssignCustomerDialog> {
       await ref.read(galleryRepositoryProvider).assignGallery(
         widget.galleryId,
         customerId: customerId,
+        downloadEnabled: _downloadEnabled ?? true,
       );
       ref.invalidate(galleryDetailProvider(widget.galleryId));
       if (mounted) {
@@ -871,6 +897,7 @@ class _AssignCustomerDialogState extends ConsumerState<_AssignCustomerDialog> {
       await ref.read(galleryRepositoryProvider).assignGallery(
         widget.galleryId,
         customerId: newCustomer.id,
+        downloadEnabled: _downloadEnabled ?? true,
       );
       ref.invalidate(galleryDetailProvider(widget.galleryId));
       

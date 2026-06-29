@@ -53,6 +53,7 @@ abstract class GalleryRemoteDataSource {
   Future<void> assignGallery(
     String galleryId, {
     required String customerId,
+    bool? downloadEnabled,
   });
 
   /// PATCH `/galleries/:id`
@@ -205,11 +206,13 @@ class GalleryRemoteDataSourceImpl implements GalleryRemoteDataSource {
   Future<void> assignGallery(
     String galleryId, {
     required String customerId,
+    bool? downloadEnabled,
   }) async {
     await _dio.post<void>(
       ApiConstants.assignGallery(galleryId),
       data: {
         'customerId': customerId,
+        if (downloadEnabled != null) 'downloadEnabled': downloadEnabled,
       },
     );
   }

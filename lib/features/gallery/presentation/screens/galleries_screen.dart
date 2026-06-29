@@ -23,7 +23,8 @@ import '../../../bookings/data/repositories/bookings_repository.dart';
 
 /// Gallery list screen — the main landing screen after login.
 class GalleriesScreen extends ConsumerStatefulWidget {
-  const GalleriesScreen({super.key});
+  final int? initialTab;
+  const GalleriesScreen({super.key, this.initialTab});
 
   @override
   ConsumerState<GalleriesScreen> createState() => _GalleriesScreenState();
@@ -32,7 +33,13 @@ class GalleriesScreen extends ConsumerStatefulWidget {
 class _GalleriesScreenState extends ConsumerState<GalleriesScreen> {
   // Toggle between grid and list view.
   bool _isGrid = true;
-  int _currentIndex = 0; // 0: Home, 1: Galleries, 2: Profile
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialTab ?? 0;
+  }
 
   List<Widget>? _ownerTabs;
   List<Widget>? _customerTabs;

@@ -18,7 +18,7 @@ class QrScannerScreen extends StatefulWidget {
 }
 
 class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingObserver {
-  final MobileScannerController _controller = MobileScannerController();
+  final MobileScannerController _controller = MobileScannerController(autoStart: false);
   bool _hasPermission = false;
   bool _isCheckingPermission = true;
 
@@ -37,6 +37,16 @@ class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingOb
       setState(() {
         _hasPermission = true;
         _isCheckingPermission = false;
+      });
+      // Delay starting the camera slightly to ensure the widget tree is fully mounted
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted && _hasPermission) {
+          try {
+            _controller.start();
+          } catch (e) {
+            debugPrint('Failed to start camera after permission granted: $e');
+          }
+        }
       });
     }
   }
@@ -355,8 +365,12 @@ class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingOb
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                          onPressed: () {
-                            _controller.start();
+                          onPressed: () async {
+                            try {
+                              await _controller.start();
+                            } catch (e) {
+                              debugPrint('Failed to start camera on retry: $e');
+                            }
                           },
                           icon: const Icon(Icons.refresh_rounded, size: 18),
                           label: const Text('Retry'),

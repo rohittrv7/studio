@@ -158,9 +158,10 @@ class GalleryRepositoryImpl implements GalleryRepository {
   Future<void> assignGallery(
     String galleryId, {
     required String customerId,
+    bool? downloadEnabled,
   }) async {
     try {
-      await _remote.assignGallery(galleryId, customerId: customerId);
+      await _remote.assignGallery(galleryId, customerId: customerId, downloadEnabled: downloadEnabled);
     } on DioException catch (e) {
       throw _mapDioException(e);
     }

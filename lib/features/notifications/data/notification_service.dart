@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 // ---------------------------------------------------------------------------
@@ -177,13 +178,7 @@ class NotificationService {
     RemoteMessage message,
   ) {
     final galleryId = message.data['galleryId'] as String?;
-    if (galleryId == null || galleryId.isEmpty) {
-      debugPrint(
-        '[NotificationService] Notification tapped but galleryId is missing '
-        'from data payload: ${message.data}',
-      );
-      return;
-    }
+    final bookingId = message.data['bookingId'] as String?;
 
     final context = navigatorKey.currentContext;
     if (context == null) {
@@ -193,16 +188,22 @@ class NotificationService {
       return;
     }
 
-    debugPrint(
-      '[NotificationService] Navigating to gallery: $galleryId',
-    );
-
-    // Use Navigator directly so this module has no dependency on GoRouter.
-    // The push is done on the root navigator so it works from any route.
-    navigatorKey.currentState?.pushNamedAndRemoveUntil(
-      '/galleries/$galleryId',
-      (route) => route.isFirst,
-    );
+    if (galleryId != null && galleryId.isNotEmpty) {
+      debugPrint(
+        '[NotificationService] Navigating to gallery: $galleryId',
+      );
+      context.go('/galleries/$galleryId');
+    } else if (bookingId != null && bookingId.isNotEmpty) {
+      debugPrint(
+        '[NotificationService] Navigating to bookings tab',
+      );
+      context.go('/galleries?tab=2');
+    } else {
+      debugPrint(
+        '[NotificationService] Default redirecting to galleries home',
+      );
+      context.go('/galleries');
+    }
   }
 
   /// Shows an in-app [SnackBar] banner for foreground messages.

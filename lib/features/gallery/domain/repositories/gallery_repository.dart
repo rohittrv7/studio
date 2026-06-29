@@ -45,6 +45,7 @@ abstract class GalleryRepository {
   Future<void> assignGallery(
     String galleryId, {
     required String customerId,
+    bool? downloadEnabled,
   });
 
   /// Updates a gallery.
