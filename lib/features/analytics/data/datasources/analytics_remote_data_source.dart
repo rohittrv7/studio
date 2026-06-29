@@ -19,6 +19,9 @@ abstract class AnalyticsRemoteDataSource {
   /// waiting for the server to respond, so the UI is never blocked.
   /// Any errors are swallowed silently (logged in debug mode only).
   void recordView(String galleryId);
+
+  /// Fetches aggregated analytics for a gallery.
+  Future<Map<String, dynamic>> getGalleryAnalytics(String galleryId);
 }
 
 // ---------------------------------------------------------------------------
@@ -56,6 +59,14 @@ class AnalyticsRemoteDataSourceImpl implements AnalyticsRemoteDataSource {
           }),
     );
   }
+
+  @override
+  Future<Map<String, dynamic>> getGalleryAnalytics(String galleryId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/analytics/galleries/$galleryId',
+    );
+    return response.data!;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -67,4 +78,9 @@ final analyticsRemoteDataSourceProvider =
     Provider<AnalyticsRemoteDataSource>((ref) {
   final dio = ref.watch(dioProvider);
   return AnalyticsRemoteDataSourceImpl(dio);
+});
+
+/// Riverpod provider to fetch gallery analytics.
+final galleryAnalyticsProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, galleryId) async {
+  return ref.watch(analyticsRemoteDataSourceProvider).getGalleryAnalytics(galleryId);
 });

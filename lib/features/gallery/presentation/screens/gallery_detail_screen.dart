@@ -287,6 +287,9 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
     final user = authState is AuthAuthenticated ? authState.user : null;
     final isStudioOwner = user?.isStudioOwner ?? false;
     const gold = Color(0xFFE8B86D);
+    final analyticsAsync = isStudioOwner
+        ? ref.watch(galleryAnalyticsProvider(widget.id))
+        : null;
 
     final hasFullAccess = galleryAsync.maybeWhen(
       data: (g) => isStudioOwner || (g.customerId == user?.id),
@@ -370,6 +373,42 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
                         ),
                         data: (folders) {
                           final folderSlivers = [
+                            if (isStudioOwner && analyticsAsync != null)
+                              SliverPadding(
+                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                                sliver: SliverToBoxAdapter(
+                                  child: analyticsAsync.maybeWhen(
+                                    data: (stats) {
+                                      final views = stats['totalViewCount'] ?? 0;
+                                      final downloads = stats['totalDownloadCount'] ?? 0;
+                                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                        decoration: BoxDecoration(
+                                          color: isDark ? const Color(0xFF161616) : const Color(0xFFF7F7F7),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE5E5E5),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                          children: [
+                                            _buildStatItem(context, Icons.remove_red_eye_outlined, 'Total Views', '$views'),
+                                            Container(
+                                              width: 1,
+                                              height: 30,
+                                              color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE5E5E5),
+                                            ),
+                                            _buildStatItem(context, Icons.download_outlined, 'Downloads', '$downloads'),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                    orElse: () => const SizedBox.shrink(),
+                                  ),
+                                ),
+                              ),
                             SliverPadding(
                               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                               sliver: SliverToBoxAdapter(
@@ -405,6 +444,9 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
                             onRefresh: () async {
                               ref.invalidate(galleryDetailProvider(widget.id));
                               ref.invalidate(folderTreeProvider(widget.id));
+                              if (isStudioOwner) {
+                                ref.invalidate(galleryAnalyticsProvider(widget.id));
+                              }
                               setState(() {
                                 _refreshCount++;
                               });
@@ -492,6 +534,37 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
               : null,
         ),
       ),
+    );
+  }
+
+  Widget _buildStatItem(BuildContext context, IconData icon, String label, String value) {
+    const gold = Color(0xFFE8B86D);
+    return Row(
+      children: [
+        Icon(icon, color: gold, size: 20),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
