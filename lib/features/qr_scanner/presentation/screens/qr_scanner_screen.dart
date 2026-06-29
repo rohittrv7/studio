@@ -138,6 +138,11 @@ class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingOb
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    try {
+      _controller.stop();
+    } catch (e) {
+      debugPrint('Error stopping camera in dispose: $e');
+    }
     _controller.dispose();
     super.dispose();
   }
@@ -353,6 +358,15 @@ class _QrScannerScreenState extends State<QrScannerScreen> with WidgetsBindingOb
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.6),
                             fontSize: 13,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Error Details: ${error.errorCode.name}\n${error.errorDetails ?? "No additional hardware details."}',
+                          style: const TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 12,
                           ),
                           textAlign: TextAlign.center,
                         ),

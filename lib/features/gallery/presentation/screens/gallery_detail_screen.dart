@@ -377,7 +377,24 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
                               SliverPadding(
                                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                                 sliver: SliverToBoxAdapter(
-                                  child: analyticsAsync.maybeWhen(
+                                  child: analyticsAsync.when(
+                                    loading: () => Container(
+                                      padding: const EdgeInsets.all(12),
+                                      alignment: Alignment.center,
+                                      child: const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(color: gold, strokeWidth: 1.5),
+                                      ),
+                                    ),
+                                    error: (err, _) => Container(
+                                      padding: const EdgeInsets.all(12),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        'Stats Error: $err',
+                                        style: const TextStyle(color: Colors.redAccent, fontSize: 11),
+                                      ),
+                                    ),
                                     data: (stats) {
                                       final views = stats['totalViewCount'] ?? 0;
                                       final downloads = stats['totalDownloadCount'] ?? 0;
@@ -405,18 +422,9 @@ class _GalleryDetailScreenState extends ConsumerState<GalleryDetailScreen> {
                                         ),
                                       );
                                     },
-                                    orElse: () => const SizedBox.shrink(),
                                   ),
                                 ),
                               ),
-                            SliverPadding(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                              sliver: SliverToBoxAdapter(
-                                child: _FavoritesFolderTile(
-                                  onTap: () => context.push('/favorites'),
-                                ),
-                              ),
-                            ),
                             if (folders.isNotEmpty)
                               SliverPadding(
                                 padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
